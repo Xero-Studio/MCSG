@@ -1,4 +1,11 @@
-## MC Server Manager By PowerCMD
-Author's Bilibili:<img width="1850" height="1850" alt="60003808e4cf7056b73d7015e247701e" src="https://github.com/user-attachments/assets/0bd18a68-1524-4696-b67b-b4ec36ebe1f9" />
-###### Now the language is Chinese (Simplified)
-###### More languages will be released in the future
+English | [简体中文](README_ZH.md)
+# MC Server Manager
+Supported by the powerful (?) Bat format
+# 🌟 Features
+- Compact and lightweight
+- Convenient for common configuration changes
+- And more...
+# 📦 Quick Start
+Download start.bat (Do not download any files starting with Version, as these old versions have many bugs, and I am not responsible for any issues that arise.) Run it, and it should work. Generally, you can use it with just one core, but due to the technical difficulty, I will not consider adding the function to download cores within the program.
+# Author on Bilibili
+[Click here!](https://space.bilibili.com/3546703915387263)
