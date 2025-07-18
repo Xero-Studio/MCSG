@@ -9,14 +9,14 @@ if not exist "%EULA_FILE%" (
 (
     echo eula=true
 ) > "%EULA_FILE%"
-echo EULAÒÑ¾­Ä¬ÈÏÍ¬Òâ£¬Èç¹ûÄú²»Í¬ÒâMojang StudiosµÄEULA£¬Çë¹Ø±Õ´Ë³ÌÐò¡£
+echo EULAå·²ç»é»˜è®¤åŒæ„ï¼Œå¦‚æžœæ‚¨ä¸åŒæ„Mojang Studiosçš„EULAï¼Œè¯·å…³é—­æ­¤ç¨‹åºã€‚
 
 title Minecraft Server Manager - By PowerCMD
 
-:: ÅäÖÃÎÄ¼þÂ·¾¶
+:: é…ç½®æ–‡ä»¶è·¯å¾„
 set "CONFIG_FILE=Config.txt"
 
-:: ³õÊ¼»¯Ä¬ÈÏÖµ
+:: åˆå§‹åŒ–é»˜è®¤å€¼
 set "DEFAULT_MEMORY=2G"
 set "DEFAULT_CORE=server.jar"
 set "DEFAULT_ONLINE_MODE=true"
@@ -26,22 +26,22 @@ set "DEFAULT_MAX_PLAYERS=20"
 set "DEFAULT_VIEW_DISTANCE=10"
 set "DEFAULT_SEED=15"
 
-:: ¼ì²éÅäÖÃÎÄ¼þÊÇ·ñ´æÔÚ
+:: æ£€æŸ¥é…ç½®æ–‡ä»¶æ˜¯å¦å­˜åœ¨
 if not exist "%CONFIG_FILE%" (
     call :create_config
 )
 
-:: Ö÷²Ëµ¥
+:: ä¸»èœå•
 :main_menu
 cls
 echo ==============================
 echo    Minecraft Server Manager
 echo ==============================
-echo 1. Æô¶¯·þÎñÆ÷
-echo 2. ÅäÖÃ·þÎñÆ÷
-echo 3. ±à¼­ÅäÖÃÎÄ¼þ
-echo 4. ÍË³ö
-choice /c 1234 /n /m "ÇëÑ¡Ôñ²Ù×÷: "
+echo 1. å¯åŠ¨æœåŠ¡å™¨
+echo 2. é…ç½®æœåŠ¡å™¨
+echo 3. ç¼–è¾‘é…ç½®æ–‡ä»¶
+echo 4. é€€å‡º
+choice /c 1234 /n /m "è¯·é€‰æ‹©æ“ä½œ: "
 goto option_%errorlevel%
 
 :option_1
@@ -61,7 +61,7 @@ goto main_menu
 :option_4
 exit
 
-:: ´´½¨ÅäÖÃÎÄ¼þ
+:: åˆ›å»ºé…ç½®æ–‡ä»¶
 :create_config
 (
     echo MEMORY=%DEFAULT_MEMORY%
@@ -75,11 +75,11 @@ exit
     echo JVM_ARGS=-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions
     echo SERVER_ARGS=nogui
 ) > "%CONFIG_FILE%"
-echo ÒÑ´´½¨ÅäÖÃÎÄ¼þ: %CONFIG_FILE%
+echo å·²åˆ›å»ºé…ç½®æ–‡ä»¶: %CONFIG_FILE%
 timeout /t 2 >nul
 goto :eof
 
-:: ¶ÁÈ¡ÅäÖÃÎÄ¼þ
+:: è¯»å–é…ç½®æ–‡ä»¶
 :read_config
 set "MEMORY="
 set "CORE="
@@ -105,7 +105,7 @@ for /f "tokens=1,* delims==" %%a in ('type "%CONFIG_FILE%"') do (
     if "%%a"=="SERVER_ARGS" set "SERVER_ARGS=%%b"
 )
 
-:: ÉèÖÃÄ¬ÈÏÖµ£¨Èç¹ûÅäÖÃÎª¿Õ£©
+:: è®¾ç½®é»˜è®¤å€¼ï¼ˆå¦‚æžœé…ç½®ä¸ºç©ºï¼‰
 if "!MEMORY!"=="" set "MEMORY=%DEFAULT_MEMORY%"
 if "!CORE!"=="" set "CORE=%DEFAULT_CORE%"
 if "!ONLINE_MODE!"=="" set "ONLINE_MODE=%DEFAULT_ONLINE_MODE%"
@@ -116,77 +116,77 @@ if "!VIEW_DISTANCE!"=="" set "VIEW_DISTANCE=%DEFAULT_VIEW_DISTANCE%"
 if "!LEVEL_SEED!"=="" set "LEVEL_SEED=%DEFAULT_SEED%"
 goto :eof
 
-:: ÅäÖÃ·þÎñÆ÷
+:: é…ç½®æœåŠ¡å™¨
 :configure_server
 call :read_config
 
 :config_menu
 cls
 echo ==============================
-echo       ·þÎñÆ÷ÅäÖÃ
+echo       æœåŠ¡å™¨é…ç½®
 echo ==============================
-echo µ±Ç°ÅäÖÃ:
-echo 1. ÄÚ´æ·ÖÅä: !MEMORY!
-echo 2. ·þÎñÆ÷ºËÐÄ: !CORE!
-echo 3. Õý°æÑéÖ¤: !ONLINE_MODE!
-echo 4. MOTDÃèÊö: !MOTD!
-echo 5. ·þÎñÆ÷¶Ë¿Ú: !PORT!
-echo 6. ×î´óÍæ¼ÒÊý: !MAX_PLAYERS!
-echo 7. ÊÓ¾à: !VIEW_DISTANCE!
-echo 8. ÊÀ½çÖÖ×Ó: !LEVEL_SEED!
-echo 9. JVM²ÎÊý: !JVM_ARGS!
-echo 10. ·þÎñÆ÷²ÎÊý: !SERVER_ARGS!
-echo 0. ·µ»ØÖ÷²Ëµ¥
+echo å½“å‰é…ç½®:
+echo 1. å†…å­˜åˆ†é…: !MEMORY!
+echo 2. æœåŠ¡å™¨æ ¸å¿ƒ: !CORE!
+echo 3. æ­£ç‰ˆéªŒè¯: !ONLINE_MODE!
+echo 4. MOTDæè¿°: !MOTD!
+echo 5. æœåŠ¡å™¨ç«¯å£: !PORT!
+echo 6. æœ€å¤§çŽ©å®¶æ•°: !MAX_PLAYERS!
+echo 7. è§†è·: !VIEW_DISTANCE!
+echo 8. ä¸–ç•Œç§å­: !LEVEL_SEED!
+echo 9. JVMå‚æ•°: !JVM_ARGS!
+echo 10. æœåŠ¡å™¨å‚æ•°: !SERVER_ARGS!
+echo 0. è¿”å›žä¸»èœå•
 echo.
-choice /c 1234567890 /n /m "Ñ¡ÔñÒªÐÞ¸ÄµÄÑ¡Ïî: "
+choice /c 1234567890 /n /m "é€‰æ‹©è¦ä¿®æ”¹çš„é€‰é¡¹: "
 
 set "option=!errorlevel!"
 if !option! equ 10 goto main_menu
 
 if !option! equ 1 (
-    set /p "new_value=ÊäÈëÐÂÄÚ´æ·ÖÅä (ÀýÈç 2G, 4G): "
+    set /p "new_value=è¾“å…¥æ–°å†…å­˜åˆ†é… (ä¾‹å¦‚ 2G, 4G): "
     if "!new_value!" neq "" set "MEMORY=!new_value!"
 )
 if !option! equ 2 (
-    echo ¿ÉÓÃµÄ·þÎñÆ÷ºËÐÄ:
+    echo å¯ç”¨çš„æœåŠ¡å™¨æ ¸å¿ƒ:
     dir /b *.jar
-    set /p "new_value=ÊäÈëºËÐÄÎÄ¼þÃû: "
+    set /p "new_value=è¾“å…¥æ ¸å¿ƒæ–‡ä»¶å: "
     if "!new_value!" neq "" set "CORE=!new_value!"
 )
 if !option! equ 3 (
-    set /p "new_value=ÆôÓÃÕý°æÑéÖ¤? (true/false): "
+    set /p "new_value=å¯ç”¨æ­£ç‰ˆéªŒè¯? (true/false): "
     if "!new_value!" neq "" set "ONLINE_MODE=!new_value!"
 )
 if !option! equ 4 (
-    set /p "new_value=ÊäÈëÐÂMOTDÃèÊö: "
+    set /p "new_value=è¾“å…¥æ–°MOTDæè¿°: "
     if "!new_value!" neq "" set "MOTD=!new_value!"
 )
 if !option! equ 5 (
-    set /p "new_value=ÊäÈëÐÂ¶Ë¿ÚºÅ: "
+    set /p "new_value=è¾“å…¥æ–°ç«¯å£å·: "
     if "!new_value!" neq "" set "PORT=!new_value!"
 )
 if !option! equ 6 (
-    set /p "new_value=ÊäÈë×î´óÍæ¼ÒÊý: "
+    set /p "new_value=è¾“å…¥æœ€å¤§çŽ©å®¶æ•°: "
     if "!new_value!" neq "" set "MAX_PLAYERS=!new_value!"
 )
 if !option! equ 7 (
-    set /p "new_value=ÊäÈëÊÓ¾à (4-32): "
+    set /p "new_value=è¾“å…¥è§†è· (4-32): "
     if "!new_value!" neq "" set "VIEW_DISTANCE=!new_value!"
 )
 if !option! equ 8 (
-    set /p "new_value=ÊäÈëÊÀ½çÖÖ×Ó: "
+    set /p "new_value=è¾“å…¥ä¸–ç•Œç§å­: "
     if "!new_value!" neq "" set "LEVEL_SEED=!new_value!"
 )
 if !option! equ 9 (
-    set /p "new_value=ÊäÈëJVM²ÎÊý: "
+    set /p "new_value=è¾“å…¥JVMå‚æ•°: "
     if "!new_value!" neq "" set "JVM_ARGS=!new_value!"
 )
 if !option! equ 10 (
-    set /p "new_value=ÊäÈë·þÎñÆ÷²ÎÊý: "
+    set /p "new_value=è¾“å…¥æœåŠ¡å™¨å‚æ•°: "
     if "!new_value!" neq "" set "SERVER_ARGS=!new_value!"
 )
 
-:: ±£´æÅäÖÃ
+:: ä¿å­˜é…ç½®
 (
     echo MEMORY=!MEMORY!
     echo CORE=!CORE!
@@ -202,21 +202,21 @@ if !option! equ 10 (
 
 goto config_menu
 
-:: Æô¶¯·þÎñÆ÷
+:: å¯åŠ¨æœåŠ¡å™¨
 :start_server
 call :read_config
 
-echo ÕýÔÚÆô¶¯·þÎñÆ÷...
-echo Ê¹ÓÃÄÚ´æ: !MEMORY!
-echo ·þÎñÆ÷ºËÐÄ: !CORE!
+echo æ­£åœ¨å¯åŠ¨æœåŠ¡å™¨...
+echo ä½¿ç”¨å†…å­˜: !MEMORY!
+echo æœåŠ¡å™¨æ ¸å¿ƒ: !CORE!
 java -Xms!MEMORY! -Xmx!MEMORY! !JVM_ARGS! -jar !CORE! !SERVER_ARGS!
 
 if errorlevel 1 (
     echo.
-    echo ·þÎñÆ÷Æô¶¯Ê§°Ü£¬Çë¼ì²é:
-    echo 1. ÄÚ´æÉèÖÃÊÇ·ñ¹ý´ó
-    echo 2. ºËÐÄÎÄ¼þÊÇ·ñ´æÔÚ
-    echo 3. JavaÊÇ·ñ°²×°ÕýÈ·
+    echo æœåŠ¡å™¨å¯åŠ¨å¤±è´¥ï¼Œè¯·æ£€æŸ¥:
+    echo 1. å†…å­˜è®¾ç½®æ˜¯å¦è¿‡å¤§
+    echo 2. æ ¸å¿ƒæ–‡ä»¶æ˜¯å¦å­˜åœ¨
+    echo 3. Javaæ˜¯å¦å®‰è£…æ­£ç¡®
     echo.
     pause
 )
