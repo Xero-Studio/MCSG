@@ -1,4 +1,4 @@
-[English](README.md) | Simplified Chinese
+English | [简体中文](README_ZH.md)
 
 
 # MC Server Manager
