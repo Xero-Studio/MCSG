@@ -67,15 +67,30 @@ If you want to build the executable yourself:
 **GitHub Actions:**
 This project includes automated builds via GitHub Actions. Executables are automatically built for Windows, Linux, and macOS on every release.
 
-# Wish List
+# 🎯 Wish List
 
+## 🔥 High Priority
+- [ ] **Multi-server management** - Manage multiple Minecraft server instances simultaneously
+- [ ] **Server templates** - Pre-configured templates for different server types
+- [ ] **Plugin management** - Automatic plugin download and management
+- [ ] **Backup system** - Scheduled world and configuration backups
 
-- [ ] Multilingual support
-- [x] Windows GUI interface (PyQt)
-- [ ] Plugin management
-- [ ] Backup functionality
-- [ ] Server performance monitoring
-- [ ] More...
+## 🌟 Medium Priority
+- [ ] **Performance monitoring** - Real-time CPU, memory, TPS monitoring
+- [ ] **Player management** - Online player list, kick/ban functionality
+- [ ] **Log analysis** - Smart server log analysis and problem diagnosis
+- [ ] **Remote management** - Web-based remote server management
+
+## 💡 Low Priority
+- [ ] **Theme switching** - Multiple interface themes
+- [ ] **Multilingual support** - English, Chinese and other languages
+- [ ] **Auto-update** - Automatic server core updates
+- [ ] **Cloud sync** - Configuration file cloud synchronization
+
+## ✅ Completed
+- [x] **Windows GUI interface** - Modern PyQt5 + Fluent Design interface
+- [x] **Hidden terminal** - No Java console window when starting server
+- [x] **Console controls** - Stop server button in console interface
 
 
 # Author on Bilibili

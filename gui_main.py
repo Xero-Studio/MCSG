@@ -510,8 +510,14 @@ class ConsoleInterface(QWidget):
         self.send_button.clicked.connect(self.send_command)
         self.send_button.setEnabled(False)
         
+        self.stop_server_button = PushButton("停止服务器", self)
+        self.stop_server_button.setIcon(FluentIcon.POWER_BUTTON)
+        self.stop_server_button.clicked.connect(self.parent.stop_server)
+        self.stop_server_button.setEnabled(False)
+        
         command_layout.addWidget(self.command_input)
         command_layout.addWidget(self.send_button)
+        command_layout.addWidget(self.stop_server_button)
         console_layout.addLayout(command_layout)
         
         console_card.viewLayout.addLayout(console_layout)
@@ -535,6 +541,7 @@ class ConsoleInterface(QWidget):
         """更新状态"""
         self.send_button.setEnabled(is_running)
         self.command_input.setEnabled(is_running)
+        self.stop_server_button.setEnabled(is_running)
 
 
 def main():
