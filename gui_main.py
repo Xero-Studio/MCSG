@@ -60,27 +60,37 @@ class MainWindow(FluentWindow):
     
     def __init__(self):
         super().__init__()
-        # 初始化管理器
-        self.multi_server_manager = MultiServerManager()
-        self.template_manager = ServerTemplateManager()
-        self.backup_manager = BackupManager()
-        self.performance_monitor = PerformanceMonitor()
         
-        # 当前服务器相关管理器
-        self.plugin_manager: Optional[PluginManager] = None
-        self.player_manager: Optional[PlayerManager] = None
-        
-        # 当前选中的服务器
-        self.current_server: Optional[ServerInstance] = None
-        self.manager: Optional[MinecraftServerManager] = None
-        
-        self.output_thread: Optional[ServerOutputThread] = None
-        self.status_timer = QTimer()
-        self.status_timer.timeout.connect(self.update_server_status)
-        self.status_timer.start(1000)  # 每秒更新一次状态
-        
-        self.init_ui()
-        self.load_default_server()
+        try:
+            # 初始化管理器
+            self.multi_server_manager = MultiServerManager()
+            self.template_manager = ServerTemplateManager()
+            self.backup_manager = BackupManager()
+            self.performance_monitor = PerformanceMonitor()
+            
+            # 当前服务器相关管理器
+            self.plugin_manager: Optional[PluginManager] = None
+            self.player_manager: Optional[PlayerManager] = None
+            
+            # 当前选中的服务器
+            self.current_server: Optional[ServerInstance] = None
+            self.manager: Optional[MinecraftServerManager] = None
+            
+            self.output_thread: Optional[ServerOutputThread] = None
+            self.status_timer = QTimer()
+            self.status_timer.timeout.connect(self.update_server_status)
+            self.status_timer.start(1000)  # 每秒更新一次状态
+            
+            self.init_ui()
+            self.load_default_server()
+            
+            print("MainWindow 初始化完成")
+            
+        except Exception as e:
+            print(f"MainWindow 初始化失败: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
     
     def init_ui(self):
         """初始化用户界面"""
@@ -2104,22 +2114,45 @@ class PlayerInterface(QWidget):
 
 def main():
     """主函数"""
-    # 启用高DPI支持
-    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
-    
-    app = QApplication(sys.argv)
-    app.setApplicationName("Minecraft Server Manager")
-    
-    # 设置主题
-    setTheme(Theme.AUTO)
-    
-    # 创建主窗口
-    window = MainWindow()
-    window.show()
-    
-    sys.exit(app.exec_())
+    try:
+        print("启动应用程序...")
+        
+        # 启用高DPI支持
+        QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+        
+        app = QApplication(sys.argv)
+        app.setApplicationName("Minecraft Server Manager")
+        
+        print("QApplication 创建成功")
+        
+        # 设置主题
+        setTheme(Theme.AUTO)
+        print("主题设置完成")
+        
+        # 创建主窗口
+        print("创建主窗口...")
+        window = MainWindow()
+        print("主窗口创建成功")
+        
+        # 显示窗口
+        window.show()
+        print("窗口显示完成")
+        
+        # 确保窗口获得焦点
+        window.raise_()
+        window.activateWindow()
+        
+        print("应用程序启动完成，进入事件循环")
+        sys.exit(app.exec_())
+        
+    except Exception as e:
+        print(f"应用程序启动失败: {e}")
+        import traceback
+        traceback.print_exc()
+        input("按回车键退出...")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

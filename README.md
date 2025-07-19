@@ -36,6 +36,44 @@ Now powered by Python with modern GUI! (Original batch version moved to `old/` f
 
 The program will automatically create configuration files and handle EULA agreement. You just need to have a server core file to get started.
 
+# 🌟 Key Features Overview
+
+## 🏗️ Multi-Server Management
+- Create and manage multiple server instances
+- Switch between servers with one click
+- Independent configuration for each server
+- Server templates for quick setup
+
+## 🔌 Plugin Management
+- Browse and install popular plugins (EssentialsX, WorldEdit, WorldGuard, etc.)
+- Automatic dependency checking
+- Enable/disable plugins without restart
+- Plugin search and filtering
+
+## 📊 Performance Monitoring
+- Real-time CPU, memory, and TPS monitoring
+- Performance status indicators (Excellent/Good/Fair/Poor)
+- Smart optimization suggestions
+- Historical performance data
+
+## 👥 Player Management
+- View online/offline player status
+- Kick, ban/unban players
+- Grant/revoke OP permissions
+- Player statistics and management
+
+## 💾 Backup System
+- Automated world and configuration backups
+- One-click backup creation and restoration
+- Backup scheduling and cleanup
+- Backup size and statistics tracking
+
+## 🔧 Smart Controls
+- Double-click force stop with 200ms detection
+- Automatic EULA agreement handling
+- Hidden Java console windows
+- Memory slider configuration
+
 # 🔧 Building from Source
 
 If you want to build the executable yourself:
