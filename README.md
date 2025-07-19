@@ -65,10 +65,9 @@ This project includes automated builds via GitHub Actions. **Pre-built executabl
 # 🎯 Wish List
 
 ## 🔥 High Priority
-- [ ] **Multi-server management** - Manage multiple Minecraft server instances simultaneously
-- [ ] **Server templates** - Pre-configured templates for different server types
 - [ ] **Plugin management** - Automatic plugin download and management
-- [ ] **Backup system** - Scheduled world and configuration backups
+- [ ] **Performance monitoring** - Real-time CPU, memory, TPS monitoring
+- [ ] **Player management** - Online player list, kick/ban functionality
 
 ## 🌟 Medium Priority
 - [ ] **Performance monitoring** - Real-time CPU, memory, TPS monitoring
@@ -86,6 +85,9 @@ This project includes automated builds via GitHub Actions. **Pre-built executabl
 - [x] **Windows GUI interface** - Modern PyQt5 + Fluent Design interface
 - [x] **Hidden terminal** - No Java console window when starting server
 - [x] **Console controls** - Stop server button in console interface
+- [x] **Multi-server management** - Manage multiple Minecraft server instances simultaneously
+- [x] **Server templates** - Pre-configured templates for different server types
+- [x] **Backup system** - Scheduled world and configuration backups
 
 
 # Author on Bilibili

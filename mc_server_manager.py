@@ -166,12 +166,39 @@ class MinecraftServerManager:
             self.server_process = None
             return True
         except subprocess.TimeoutExpired:
-            # 强制终止
-            self.server_process.terminate()
+            # 强制终止进程树
+            try:
+                import psutil
+                parent = psutil.Process(self.server_process.pid)
+                children = parent.children(recursive=True)
+                for child in children:
+                    child.terminate()
+                parent.terminate()
+                
+                # 等待进程结束
+                psutil.wait_procs(children + [parent], timeout=10)
+            except ImportError:
+                # 如果没有psutil，使用系统命令强制终止
+                if os.name == 'nt':  # Windows
+                    os.system(f"taskkill /F /T /PID {self.server_process.pid}")
+                else:  # Unix/Linux
+                    os.system(f"pkill -P {self.server_process.pid}")
+                    self.server_process.terminate()
+            except Exception:
+                # 最后的手段
+                self.server_process.kill()
+            
             self.server_process = None
             return True
         except Exception as e:
             print(f"停止服务器失败: {e}")
+            # 确保进程被清理
+            if self.server_process:
+                try:
+                    self.server_process.kill()
+                except:
+                    pass
+                self.server_process = None
             return False
     
     def send_command(self, command: str) -> bool:

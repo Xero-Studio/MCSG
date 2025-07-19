@@ -4,5 +4,8 @@
 PyQt5>=5.15.0
 PyQt-Fluent-Widgets>=1.1.0
 
+# Process management
+psutil>=5.8.0
+
 # For better Windows integration (optional)
 pywin32>=227; sys_platform == "win32"

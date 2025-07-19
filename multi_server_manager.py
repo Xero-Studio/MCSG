@@ -112,6 +112,40 @@ class MultiServerManager:
         except Exception as e:
             print(f"保存服务器列表失败: {e}")
     
+    def create_server_advanced(self, name: str, template_name: str = None, directory: str = None, core_file: str = None) -> str:
+        """创建新服务器（高级版本）"""
+        server_id = str(uuid.uuid4())
+        
+        if directory:
+            server_directory = os.path.join(directory, name.replace(" ", "_"))
+        else:
+            server_directory = os.path.join("servers", server_id)
+        
+        # 创建服务器目录
+        os.makedirs(server_directory, exist_ok=True)
+        
+        # 获取配置
+        config = {}
+        if template_name:
+            template = self.template_manager.get_template_by_name(template_name)
+            if template:
+                config = template.config.copy()
+        
+        # 复制核心文件
+        if core_file and os.path.exists(core_file):
+            import shutil
+            core_filename = os.path.basename(core_file)
+            target_core = os.path.join(server_directory, core_filename)
+            shutil.copy2(core_file, target_core)
+            config['core'] = core_filename
+        
+        # 创建服务器实例
+        server = ServerInstance(server_id, name, server_directory, config)
+        self.servers[server_id] = server
+        self.save_servers()
+        
+        return server_id
+    
     def create_server(self, name: str, template_name: str = None, custom_config: Dict[str, str] = None) -> str:
         """创建新服务器"""
         server_id = str(uuid.uuid4())
