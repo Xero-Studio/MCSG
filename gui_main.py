@@ -26,6 +26,9 @@ from mc_server_manager import MinecraftServerManager
 from multi_server_manager import MultiServerManager, ServerInstance
 from server_template import ServerTemplateManager
 from backup_manager import BackupManager
+from plugin_manager import PluginManager
+from performance_monitor import PerformanceMonitor
+from player_manager import PlayerManager
 
 
 class ServerOutputThread(QThread):
@@ -61,6 +64,11 @@ class MainWindow(FluentWindow):
         self.multi_server_manager = MultiServerManager()
         self.template_manager = ServerTemplateManager()
         self.backup_manager = BackupManager()
+        self.performance_monitor = PerformanceMonitor()
+        
+        # 当前服务器相关管理器
+        self.plugin_manager: Optional[PluginManager] = None
+        self.player_manager: Optional[PlayerManager] = None
         
         # 当前选中的服务器
         self.current_server: Optional[ServerInstance] = None
@@ -95,6 +103,15 @@ class MainWindow(FluentWindow):
         self.backup_interface = BackupInterface(self)
         self.backup_interface.setObjectName("BackupInterface")
         
+        self.plugin_interface = PluginInterface(self)
+        self.plugin_interface.setObjectName("PluginInterface")
+        
+        self.performance_interface = PerformanceInterface(self)
+        self.performance_interface.setObjectName("PerformanceInterface")
+        
+        self.player_interface = PlayerInterface(self)
+        self.player_interface.setObjectName("PlayerInterface")
+        
         # 添加到导航
         self.addSubInterface(
             self.server_list_interface, 
@@ -126,6 +143,24 @@ class MainWindow(FluentWindow):
             "备份管理",
             NavigationItemPosition.TOP
         )
+        self.addSubInterface(
+            self.plugin_interface, 
+            FluentIcon.APPLICATION, 
+            "插件管理",
+            NavigationItemPosition.TOP
+        )
+        self.addSubInterface(
+            self.performance_interface, 
+            FluentIcon.SPEED_HIGH, 
+            "性能监控",
+            NavigationItemPosition.TOP
+        )
+        self.addSubInterface(
+            self.player_interface, 
+            FluentIcon.PEOPLE, 
+            "玩家管理",
+            NavigationItemPosition.TOP
+        )
         
         # 设置默认界面
         self.stackedWidget.setCurrentWidget(self.server_list_interface)
@@ -145,8 +180,24 @@ class MainWindow(FluentWindow):
         self.current_server = self.multi_server_manager.get_server(server_id)
         if self.current_server:
             self.manager = self.current_server.manager
+            
+            # 初始化当前服务器的管理器
+            self.plugin_manager = PluginManager(self.current_server.directory)
+            self.player_manager = PlayerManager(self.current_server.directory, self.manager)
+            self.performance_monitor.server_manager = self.manager
+            
             self.load_config()
             self.server_list_interface.refresh_server_list()
+            
+            # 刷新相关界面
+            self.plugin_interface.refresh_plugin_list()
+            self.player_interface.refresh_player_list()
+            
+            # 启动性能监控
+            if self.manager and self.manager.is_server_running():
+                self.performance_monitor.start_monitoring()
+            else:
+                self.performance_monitor.stop_monitoring()
     
     def load_config(self):
         """加载配置到界面"""
@@ -1374,6 +1425,681 @@ class CreateServerDialog(QWidget):
         self.close()
         if hasattr(self, 'finished'):
             self.finished()
+
+
+class PluginInterface(QWidget):
+    """插件管理界面"""
+    
+    def __init__(self, parent: MainWindow):
+        super().__init__()
+        self.parent = parent
+        self.init_ui()
+    
+    def init_ui(self):
+        """初始化界面"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # 标题和操作按钮
+        header_layout = QHBoxLayout()
+        title_label = StrongBodyLabel("插件管理")
+        title_label.setStyleSheet("font-size: 20px;")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        
+        self.refresh_button = PushButton("刷新", self)
+        self.refresh_button.setIcon(FluentIcon.SYNC)
+        self.refresh_button.clicked.connect(self.refresh_plugin_list)
+        header_layout.addWidget(self.refresh_button)
+        
+        layout.addLayout(header_layout)
+        
+        # 选项卡
+        from qfluentwidgets import TabWidget
+        self.tab_widget = TabWidget(self)
+        
+        # 已安装插件选项卡
+        self.installed_tab = QWidget()
+        self.init_installed_tab()
+        self.tab_widget.addTab(self.installed_tab, "已安装插件")
+        
+        # 可用插件选项卡
+        self.available_tab = QWidget()
+        self.init_available_tab()
+        self.tab_widget.addTab(self.available_tab, "可用插件")
+        
+        layout.addWidget(self.tab_widget)
+    
+    def init_installed_tab(self):
+        """初始化已安装插件选项卡"""
+        layout = QVBoxLayout(self.installed_tab)
+        layout.setSpacing(15)
+        
+        self.installed_list_layout = QVBoxLayout()
+        layout.addLayout(self.installed_list_layout)
+        layout.addStretch()
+    
+    def init_available_tab(self):
+        """初始化可用插件选项卡"""
+        layout = QVBoxLayout(self.available_tab)
+        layout.setSpacing(15)
+        
+        # 搜索框
+        search_layout = QHBoxLayout()
+        self.search_edit = LineEdit(self)
+        self.search_edit.setPlaceholderText("搜索插件...")
+        self.search_button = PushButton("搜索", self)
+        self.search_button.setIcon(FluentIcon.SEARCH)
+        self.search_button.clicked.connect(self.search_plugins)
+        
+        search_layout.addWidget(self.search_edit)
+        search_layout.addWidget(self.search_button)
+        layout.addLayout(search_layout)
+        
+        self.available_list_layout = QVBoxLayout()
+        layout.addLayout(self.available_list_layout)
+        layout.addStretch()
+    
+    def refresh_plugin_list(self):
+        """刷新插件列表"""
+        if not self.parent.plugin_manager:
+            return
+        
+        # 刷新已安装插件
+        self.refresh_installed_plugins()
+        
+        # 刷新可用插件
+        self.refresh_available_plugins()
+    
+    def refresh_installed_plugins(self):
+        """刷新已安装插件列表"""
+        # 清空现有列表
+        for i in reversed(range(self.installed_list_layout.count())):
+            child = self.installed_list_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        if not self.parent.plugin_manager:
+            return
+        
+        plugins = self.parent.plugin_manager.get_installed_plugins()
+        for plugin in plugins:
+            plugin_widget = self.create_installed_plugin_widget(plugin)
+            self.installed_list_layout.addWidget(plugin_widget)
+        
+        if not plugins:
+            no_plugins_label = BodyLabel("暂无已安装插件")
+            no_plugins_label.setAlignment(Qt.AlignCenter)
+            self.installed_list_layout.addWidget(no_plugins_label)
+    
+    def refresh_available_plugins(self):
+        """刷新可用插件列表"""
+        # 清空现有列表
+        for i in reversed(range(self.available_list_layout.count())):
+            child = self.available_list_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        if not self.parent.plugin_manager:
+            return
+        
+        plugins = self.parent.plugin_manager.get_available_plugins()
+        for plugin in plugins:
+            if not self.parent.plugin_manager.is_plugin_installed(plugin.name):
+                plugin_widget = self.create_available_plugin_widget(plugin)
+                self.available_list_layout.addWidget(plugin_widget)
+    
+    def create_installed_plugin_widget(self, plugin):
+        """创建已安装插件组件"""
+        plugin_card = SimpleCardWidget(self)
+        plugin_layout = QHBoxLayout(plugin_card)
+        
+        # 插件信息
+        info_layout = QVBoxLayout()
+        name_label = StrongBodyLabel(plugin.name)
+        version_label = BodyLabel(f"版本: {plugin.version}")
+        author_label = BodyLabel(f"作者: {plugin.author}")
+        desc_label = BodyLabel(plugin.description)
+        desc_label.setWordWrap(True)
+        
+        info_layout.addWidget(name_label)
+        info_layout.addWidget(version_label)
+        info_layout.addWidget(author_label)
+        info_layout.addWidget(desc_label)
+        
+        plugin_layout.addLayout(info_layout)
+        plugin_layout.addStretch()
+        
+        # 操作按钮
+        button_layout = QVBoxLayout()
+        
+        if plugin.enabled:
+            disable_button = PushButton("禁用", self)
+            disable_button.clicked.connect(lambda: self.disable_plugin(plugin.name))
+            button_layout.addWidget(disable_button)
+        else:
+            enable_button = PushButton("启用", self)
+            enable_button.clicked.connect(lambda: self.enable_plugin(plugin.name))
+            button_layout.addWidget(enable_button)
+        
+        uninstall_button = PushButton("卸载", self)
+        uninstall_button.setIcon(FluentIcon.DELETE)
+        uninstall_button.clicked.connect(lambda: self.uninstall_plugin(plugin.name))
+        button_layout.addWidget(uninstall_button)
+        
+        plugin_layout.addLayout(button_layout)
+        
+        return plugin_card
+    
+    def create_available_plugin_widget(self, plugin):
+        """创建可用插件组件"""
+        plugin_card = SimpleCardWidget(self)
+        plugin_layout = QHBoxLayout(plugin_card)
+        
+        # 插件信息
+        info_layout = QVBoxLayout()
+        name_label = StrongBodyLabel(plugin.name)
+        version_label = BodyLabel(f"版本: {plugin.version}")
+        author_label = BodyLabel(f"作者: {plugin.author}")
+        desc_label = BodyLabel(plugin.description)
+        desc_label.setWordWrap(True)
+        
+        if plugin.dependencies:
+            deps_label = BodyLabel(f"依赖: {', '.join(plugin.dependencies)}")
+            deps_label.setStyleSheet("color: #888888;")
+            info_layout.addWidget(deps_label)
+        
+        info_layout.addWidget(name_label)
+        info_layout.addWidget(version_label)
+        info_layout.addWidget(author_label)
+        info_layout.addWidget(desc_label)
+        
+        plugin_layout.addLayout(info_layout)
+        plugin_layout.addStretch()
+        
+        # 安装按钮
+        install_button = PushButton("安装", self)
+        install_button.setIcon(FluentIcon.DOWNLOAD)
+        install_button.clicked.connect(lambda: self.install_plugin(plugin))
+        plugin_layout.addWidget(install_button)
+        
+        return plugin_card
+    
+    def install_plugin(self, plugin):
+        """安装插件"""
+        if not self.parent.plugin_manager:
+            return
+        
+        InfoBar.info(
+            title="开始安装",
+            content=f"正在安装插件 {plugin.name}...",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=3000,
+            parent=self.parent
+        )
+        
+        # 异步安装
+        def install_async():
+            success = self.parent.plugin_manager.install_plugin(plugin)
+            QTimer.singleShot(100, lambda: self.install_finished(plugin.name, success))
+        
+        import threading
+        threading.Thread(target=install_async, daemon=True).start()
+    
+    def install_finished(self, plugin_name: str, success: bool):
+        """安装完成"""
+        if success:
+            InfoBar.success(
+                title="安装成功",
+                content=f"插件 {plugin_name} 安装成功！",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+            self.refresh_plugin_list()
+        else:
+            InfoBar.error(
+                title="安装失败",
+                content=f"插件 {plugin_name} 安装失败！",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+    
+    def uninstall_plugin(self, plugin_name: str):
+        """卸载插件"""
+        from qfluentwidgets import MessageBox
+        
+        dialog = MessageBox(
+            "确认卸载",
+            f"确定要卸载插件 '{plugin_name}' 吗？",
+            self
+        )
+        
+        if dialog.exec():
+            if self.parent.plugin_manager.uninstall_plugin(plugin_name):
+                InfoBar.success(
+                    title="卸载成功",
+                    content=f"插件 {plugin_name} 已卸载",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self.parent
+                )
+                self.refresh_plugin_list()
+    
+    def enable_plugin(self, plugin_name: str):
+        """启用插件"""
+        if self.parent.plugin_manager.enable_plugin(plugin_name):
+            InfoBar.success(
+                title="启用成功",
+                content=f"插件 {plugin_name} 已启用",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self.parent
+            )
+            self.refresh_plugin_list()
+    
+    def disable_plugin(self, plugin_name: str):
+        """禁用插件"""
+        if self.parent.plugin_manager.disable_plugin(plugin_name):
+            InfoBar.success(
+                title="禁用成功",
+                content=f"插件 {plugin_name} 已禁用",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self.parent
+            )
+            self.refresh_plugin_list()
+    
+    def search_plugins(self):
+        """搜索插件"""
+        keyword = self.search_edit.text().strip()
+        if not keyword or not self.parent.plugin_manager:
+            self.refresh_available_plugins()
+            return
+        
+        # 清空现有列表
+        for i in reversed(range(self.available_list_layout.count())):
+            child = self.available_list_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        # 搜索结果
+        results = self.parent.plugin_manager.search_plugins(keyword)
+        for plugin in results:
+            if not self.parent.plugin_manager.is_plugin_installed(plugin.name):
+                plugin_widget = self.create_available_plugin_widget(plugin)
+                self.available_list_layout.addWidget(plugin_widget)
+        
+        if not results:
+            no_results_label = BodyLabel(f"未找到包含 '{keyword}' 的插件")
+            no_results_label.setAlignment(Qt.AlignCenter)
+            self.available_list_layout.addWidget(no_results_label)
+
+
+class PerformanceInterface(QWidget):
+    """性能监控界面"""
+    
+    def __init__(self, parent: MainWindow):
+        super().__init__()
+        self.parent = parent
+        self.init_ui()
+        
+        # 添加性能监控回调
+        if parent.performance_monitor:
+            parent.performance_monitor.add_callback(self.update_performance_data)
+    
+    def init_ui(self):
+        """初始化界面"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # 标题
+        title_label = StrongBodyLabel("性能监控")
+        title_label.setStyleSheet("font-size: 20px;")
+        layout.addWidget(title_label)
+        
+        # 实时数据卡片
+        realtime_card = HeaderCardWidget(self)
+        realtime_card.setTitle("实时性能数据")
+        
+        realtime_layout = QGridLayout()
+        
+        # CPU使用率
+        realtime_layout.addWidget(BodyLabel("CPU使用率:"), 0, 0)
+        self.cpu_label = StrongBodyLabel("0%")
+        realtime_layout.addWidget(self.cpu_label, 0, 1)
+        
+        # 内存使用
+        realtime_layout.addWidget(BodyLabel("内存使用:"), 0, 2)
+        self.memory_label = StrongBodyLabel("0 MB")
+        realtime_layout.addWidget(self.memory_label, 0, 3)
+        
+        # TPS
+        realtime_layout.addWidget(BodyLabel("服务器TPS:"), 1, 0)
+        self.tps_label = StrongBodyLabel("0.0")
+        realtime_layout.addWidget(self.tps_label, 1, 1)
+        
+        # 在线玩家
+        realtime_layout.addWidget(BodyLabel("在线玩家:"), 1, 2)
+        self.players_label = StrongBodyLabel("0")
+        realtime_layout.addWidget(self.players_label, 1, 3)
+        
+        realtime_card.viewLayout.addLayout(realtime_layout)
+        layout.addWidget(realtime_card)
+        
+        # 性能状态卡片
+        status_card = HeaderCardWidget(self)
+        status_card.setTitle("性能状态")
+        
+        status_layout = QHBoxLayout()
+        status_layout.addWidget(BodyLabel("当前状态:"))
+        self.status_label = StrongBodyLabel("未知")
+        status_layout.addWidget(self.status_label)
+        status_layout.addStretch()
+        
+        status_card.viewLayout.addLayout(status_layout)
+        layout.addWidget(status_card)
+        
+        # 优化建议卡片
+        suggestions_card = HeaderCardWidget(self)
+        suggestions_card.setTitle("优化建议")
+        
+        self.suggestions_layout = QVBoxLayout()
+        suggestions_card.viewLayout.addLayout(self.suggestions_layout)
+        layout.addWidget(suggestions_card)
+        
+        layout.addStretch()
+    
+    def update_performance_data(self, data):
+        """更新性能数据"""
+        # 更新实时数据
+        self.cpu_label.setText(f"{data.cpu_percent:.1f}%")
+        self.memory_label.setText(f"{data.memory_used} MB")
+        self.tps_label.setText(f"{data.tps:.1f}")
+        self.players_label.setText(str(data.online_players))
+        
+        # 更新状态
+        status = self.parent.performance_monitor.get_performance_status()
+        self.status_label.setText(status)
+        
+        # 设置状态颜色
+        if status == "优秀":
+            self.status_label.setStyleSheet("color: #107c10;")
+        elif status == "良好":
+            self.status_label.setStyleSheet("color: #0078d4;")
+        elif status == "一般":
+            self.status_label.setStyleSheet("color: #ff8c00;")
+        else:
+            self.status_label.setStyleSheet("color: #d13438;")
+        
+        # 更新建议
+        self.update_suggestions()
+    
+    def update_suggestions(self):
+        """更新优化建议"""
+        # 清空现有建议
+        for i in reversed(range(self.suggestions_layout.count())):
+            child = self.suggestions_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        suggestions = self.parent.performance_monitor.get_performance_suggestions()
+        for suggestion in suggestions:
+            suggestion_label = BodyLabel(f"• {suggestion}")
+            suggestion_label.setWordWrap(True)
+            self.suggestions_layout.addWidget(suggestion_label)
+
+
+class PlayerInterface(QWidget):
+    """玩家管理界面"""
+    
+    def __init__(self, parent: MainWindow):
+        super().__init__()
+        self.parent = parent
+        self.init_ui()
+    
+    def init_ui(self):
+        """初始化界面"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # 标题和操作按钮
+        header_layout = QHBoxLayout()
+        title_label = StrongBodyLabel("玩家管理")
+        title_label.setStyleSheet("font-size: 20px;")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        
+        self.refresh_button = PushButton("刷新", self)
+        self.refresh_button.setIcon(FluentIcon.SYNC)
+        self.refresh_button.clicked.connect(self.refresh_player_list)
+        header_layout.addWidget(self.refresh_button)
+        
+        layout.addLayout(header_layout)
+        
+        # 统计信息卡片
+        stats_card = HeaderCardWidget(self)
+        stats_card.setTitle("玩家统计")
+        
+        self.stats_layout = QGridLayout()
+        stats_card.viewLayout.addLayout(self.stats_layout)
+        layout.addWidget(stats_card)
+        
+        # 玩家列表
+        players_card = HeaderCardWidget(self)
+        players_card.setTitle("玩家列表")
+        
+        self.player_list_layout = QVBoxLayout()
+        players_card.viewLayout.addLayout(self.player_list_layout)
+        layout.addWidget(players_card)
+        
+        layout.addStretch()
+    
+    def refresh_player_list(self):
+        """刷新玩家列表"""
+        if not self.parent.player_manager:
+            return
+        
+        # 更新统计信息
+        self.update_statistics()
+        
+        # 清空现有列表
+        for i in reversed(range(self.player_list_layout.count())):
+            child = self.player_list_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        # 添加玩家项
+        players = self.parent.player_manager.get_all_players()
+        for player in players:
+            player_widget = self.create_player_widget(player)
+            self.player_list_layout.addWidget(player_widget)
+        
+        if not players:
+            no_players_label = BodyLabel("暂无玩家数据")
+            no_players_label.setAlignment(Qt.AlignCenter)
+            self.player_list_layout.addWidget(no_players_label)
+    
+    def update_statistics(self):
+        """更新统计信息"""
+        # 清空现有统计
+        for i in reversed(range(self.stats_layout.count())):
+            child = self.stats_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        if not self.parent.player_manager:
+            return
+        
+        stats = self.parent.player_manager.get_player_statistics()
+        
+        # 总玩家数
+        self.stats_layout.addWidget(BodyLabel("总玩家数:"), 0, 0)
+        self.stats_layout.addWidget(StrongBodyLabel(str(stats["total_players"])), 0, 1)
+        
+        # 在线玩家
+        self.stats_layout.addWidget(BodyLabel("在线玩家:"), 0, 2)
+        online_label = StrongBodyLabel(str(stats["online_players"]))
+        online_label.setStyleSheet("color: #107c10;")
+        self.stats_layout.addWidget(online_label, 0, 3)
+        
+        # 封禁玩家
+        self.stats_layout.addWidget(BodyLabel("封禁玩家:"), 1, 0)
+        banned_label = StrongBodyLabel(str(stats["banned_players"]))
+        banned_label.setStyleSheet("color: #d13438;")
+        self.stats_layout.addWidget(banned_label, 1, 1)
+        
+        # OP玩家
+        self.stats_layout.addWidget(BodyLabel("OP玩家:"), 1, 2)
+        self.stats_layout.addWidget(StrongBodyLabel(str(stats["op_players"])), 1, 3)
+    
+    def create_player_widget(self, player):
+        """创建玩家组件"""
+        player_card = SimpleCardWidget(self)
+        player_layout = QHBoxLayout(player_card)
+        
+        # 玩家信息
+        info_layout = QVBoxLayout()
+        name_label = StrongBodyLabel(player.username)
+        
+        status_text = "在线" if player.is_online else "离线"
+        status_color = "#107c10" if player.is_online else "#888888"
+        status_label = BodyLabel(f"状态: {status_text}")
+        status_label.setStyleSheet(f"color: {status_color};")
+        
+        # 标签
+        tags = []
+        if player.is_op:
+            tags.append("OP")
+        if player.is_banned:
+            tags.append("封禁")
+        if player.is_whitelisted:
+            tags.append("白名单")
+        
+        if tags:
+            tags_label = BodyLabel(f"标签: {', '.join(tags)}")
+            info_layout.addWidget(tags_label)
+        
+        info_layout.addWidget(name_label)
+        info_layout.addWidget(status_label)
+        
+        player_layout.addLayout(info_layout)
+        player_layout.addStretch()
+        
+        # 操作按钮
+        button_layout = QHBoxLayout()
+        
+        if player.is_online:
+            kick_button = PushButton("踢出", self)
+            kick_button.clicked.connect(lambda: self.kick_player(player.username))
+            button_layout.addWidget(kick_button)
+        
+        if not player.is_banned:
+            ban_button = PushButton("封禁", self)
+            ban_button.clicked.connect(lambda: self.ban_player(player.username))
+            button_layout.addWidget(ban_button)
+        else:
+            unban_button = PushButton("解封", self)
+            unban_button.clicked.connect(lambda: self.unban_player(player.username))
+            button_layout.addWidget(unban_button)
+        
+        if not player.is_op:
+            op_button = PushButton("给予OP", self)
+            op_button.clicked.connect(lambda: self.op_player(player.username))
+            button_layout.addWidget(op_button)
+        else:
+            deop_button = PushButton("移除OP", self)
+            deop_button.clicked.connect(lambda: self.deop_player(player.username))
+            button_layout.addWidget(deop_button)
+        
+        player_layout.addLayout(button_layout)
+        
+        return player_card
+    
+    def kick_player(self, username: str):
+        """踢出玩家"""
+        if self.parent.player_manager.kick_player(username):
+            InfoBar.success(
+                title="踢出成功",
+                content=f"玩家 {username} 已被踢出",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+    
+    def ban_player(self, username: str):
+        """封禁玩家"""
+        if self.parent.player_manager.ban_player(username):
+            InfoBar.success(
+                title="封禁成功",
+                content=f"玩家 {username} 已被封禁",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+            self.refresh_player_list()
+    
+    def unban_player(self, username: str):
+        """解封玩家"""
+        if self.parent.player_manager.unban_player(username):
+            InfoBar.success(
+                title="解封成功",
+                content=f"玩家 {username} 已被解封",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+            self.refresh_player_list()
+    
+    def op_player(self, username: str):
+        """给予OP权限"""
+        if self.parent.player_manager.op_player(username):
+            InfoBar.success(
+                title="OP成功",
+                content=f"已给予玩家 {username} OP权限",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+            self.refresh_player_list()
+    
+    def deop_player(self, username: str):
+        """移除OP权限"""
+        if self.parent.player_manager.deop_player(username):
+            InfoBar.success(
+                title="移除OP成功",
+                content=f"已移除玩家 {username} 的OP权限",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+            self.refresh_player_list()
 
 
 def main():
