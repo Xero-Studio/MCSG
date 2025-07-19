@@ -20,8 +20,13 @@ def main():
         from mc_server_manager import main as cli_main
         cli_main()
     except Exception as e:
-        print(f"启动失败: {e}")
-        input("按回车键退出...")
+        print(f"GUI启动失败: {e}")
+        import traceback
+        traceback.print_exc()
+        print("\n正在启动命令行版本...")
+        # 回退到命令行版本
+        from mc_server_manager import main as cli_main
+        cli_main()
 
 if __name__ == "__main__":
     main()

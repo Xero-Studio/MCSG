@@ -428,9 +428,10 @@ def main():
         sys.exit(app.exec_())
     except Exception as e:
         print(f"GUI启动失败: {e}")
-        print("尝试启动命令行版本...")
-        from mc_server_manager import main as cli_main
-        cli_main()
+        import traceback
+        traceback.print_exc()
+        input("按回车键退出...")
+        raise e
 
 if __name__ == "__main__":
     main()
