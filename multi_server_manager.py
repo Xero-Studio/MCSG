@@ -73,6 +73,10 @@ class ServerInstance:
         """停止服务器"""
         return self.manager.stop_server() if self.manager else False
     
+    def force_stop(self) -> bool:
+        """强制停止服务器"""
+        return self.manager.force_stop_server() if self.manager else False
+    
     def send_command(self, command: str) -> bool:
         """发送命令"""
         return self.manager.send_command(command) if self.manager else False

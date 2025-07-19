@@ -201,6 +201,47 @@ class MinecraftServerManager:
                 self.server_process = None
             return False
     
+    def force_stop_server(self) -> bool:
+        """强制停止服务器（不发送stop命令）"""
+        if not self.is_server_running():
+            return False
+        
+        try:
+            # 直接强制终止进程树
+            try:
+                import psutil
+                parent = psutil.Process(self.server_process.pid)
+                children = parent.children(recursive=True)
+                for child in children:
+                    child.kill()
+                parent.kill()
+                
+                # 等待进程结束
+                psutil.wait_procs(children + [parent], timeout=5)
+            except ImportError:
+                # 如果没有psutil，使用系统命令强制终止
+                if os.name == 'nt':  # Windows
+                    os.system(f"taskkill /F /T /PID {self.server_process.pid}")
+                else:  # Unix/Linux
+                    os.system(f"pkill -9 -P {self.server_process.pid}")
+                    self.server_process.kill()
+            except Exception:
+                # 最后的手段
+                self.server_process.kill()
+            
+            self.server_process = None
+            return True
+        except Exception as e:
+            print(f"强制停止服务器失败: {e}")
+            # 确保进程被清理
+            if self.server_process:
+                try:
+                    self.server_process.kill()
+                except:
+                    pass
+                self.server_process = None
+            return False
+    
     def send_command(self, command: str) -> bool:
         """发送命令到服务器"""
         if not self.is_server_running():
