@@ -1470,17 +1470,29 @@ class PluginInterface(QWidget):
         
         layout.addLayout(header_layout)
         
-        # 使用简单的按钮切换而不是选项卡
+        # 使用Fluent Design风格的切换按钮
         tab_button_layout = QHBoxLayout()
         
+        # 创建按钮组容器
+        button_container = SimpleCardWidget(self)
+        button_container.setFixedHeight(50)
+        container_layout = QHBoxLayout(button_container)
+        container_layout.setContentsMargins(5, 5, 5, 5)
+        container_layout.setSpacing(5)
+        
         self.installed_button = PushButton("已安装插件", self)
+        self.installed_button.setFixedHeight(40)
         self.installed_button.clicked.connect(lambda: self.switch_tab(0))
         
         self.available_button = PushButton("可用插件", self)
+        self.available_button.setFixedHeight(40)
         self.available_button.clicked.connect(lambda: self.switch_tab(1))
         
-        tab_button_layout.addWidget(self.installed_button)
-        tab_button_layout.addWidget(self.available_button)
+        container_layout.addWidget(self.installed_button)
+        container_layout.addWidget(self.available_button)
+        container_layout.addStretch()
+        
+        tab_button_layout.addWidget(button_container)
         tab_button_layout.addStretch()
         
         layout.addLayout(tab_button_layout)
@@ -1501,7 +1513,8 @@ class PluginInterface(QWidget):
         
         # 默认显示已安装插件
         self.stacked_widget.setCurrentIndex(0)
-        self.installed_button.setStyleSheet("background-color: #0078d4; color: white;")
+        # 初始化按钮样式
+        self.switch_tab(0)
         
         layout.addWidget(self.stacked_widget)
     
@@ -1509,13 +1522,42 @@ class PluginInterface(QWidget):
         """切换选项卡"""
         self.stacked_widget.setCurrentIndex(index)
         
-        # 更新按钮样式
+        # 更新按钮样式 - 使用Fluent Design风格
+        active_style = """
+            PushButton {
+                background-color: #0078d4;
+                color: white;
+                border: 2px solid #0078d4;
+                border-radius: 6px;
+                font-weight: bold;
+                padding: 8px 16px;
+            }
+            PushButton:hover {
+                background-color: #106ebe;
+                border-color: #106ebe;
+            }
+        """
+        
+        inactive_style = """
+            PushButton {
+                background-color: transparent;
+                color: #323130;
+                border: 2px solid #e1dfdd;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            PushButton:hover {
+                background-color: #f3f2f1;
+                border-color: #c8c6c4;
+            }
+        """
+        
         if index == 0:
-            self.installed_button.setStyleSheet("background-color: #0078d4; color: white;")
-            self.available_button.setStyleSheet("")
+            self.installed_button.setStyleSheet(active_style)
+            self.available_button.setStyleSheet(inactive_style)
         else:
-            self.installed_button.setStyleSheet("")
-            self.available_button.setStyleSheet("background-color: #0078d4; color: white;")
+            self.installed_button.setStyleSheet(inactive_style)
+            self.available_button.setStyleSheet(active_style)
     
     def init_installed_tab(self):
         """初始化已安装插件选项卡"""
