@@ -207,30 +207,49 @@ class MinecraftServerManager:
             return False
         
         try:
-            # 直接强制终止进程树
+            # 立即强制终止，不等待
             try:
                 import psutil
                 parent = psutil.Process(self.server_process.pid)
                 children = parent.children(recursive=True)
-                for child in children:
-                    child.kill()
-                parent.kill()
                 
-                # 等待进程结束
-                psutil.wait_procs(children + [parent], timeout=5)
+                # 立即kill所有进程，不等待
+                for child in children:
+                    try:
+                        child.kill()
+                    except:
+                        pass
+                
+                try:
+                    parent.kill()
+                except:
+                    pass
+                    
             except ImportError:
                 # 如果没有psutil，使用系统命令强制终止
                 if os.name == 'nt':  # Windows
-                    os.system(f"taskkill /F /T /PID {self.server_process.pid}")
+                    import subprocess
+                    subprocess.Popen(f"taskkill /F /T /PID {self.server_process.pid}", 
+                                   shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 else:  # Unix/Linux
-                    os.system(f"pkill -9 -P {self.server_process.pid}")
-                    self.server_process.kill()
+                    import subprocess
+                    subprocess.Popen(f"pkill -9 -P {self.server_process.pid}", 
+                                   shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    try:
+                        self.server_process.kill()
+                    except:
+                        pass
             except Exception:
                 # 最后的手段
-                self.server_process.kill()
+                try:
+                    self.server_process.kill()
+                except:
+                    pass
             
+            # 立即设置为None，不等待进程真正结束
             self.server_process = None
             return True
+            
         except Exception as e:
             print(f"强制停止服务器失败: {e}")
             # 确保进程被清理

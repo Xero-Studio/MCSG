@@ -330,26 +330,29 @@ class MainWindow(FluentWindow):
             self.output_thread.wait()
             self.output_thread = None
         
-        if self.current_server and self.current_server.force_stop():
-            InfoBar.success(
-                title="强制停止成功",
-                content="服务器已强制关闭",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=3000,
-                parent=self
-            )
-        else:
-            InfoBar.error(
-                title="强制停止失败",
-                content="无法强制停止服务器",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=3000,
-                parent=self
-            )
+        # 立即显示强制停止提示
+        InfoBar.warning(
+            title="强制停止中",
+            content="正在强制关闭服务器...",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=2000,
+            parent=self
+        )
+        
+        # 使用线程异步处理强制停止，避免界面卡顿
+        def force_stop_async():
+            try:
+                if self.current_server:
+                    self.current_server.force_stop()
+                # 强制停止后立即更新状态
+                QTimer.singleShot(100, self.update_server_status)
+            except Exception as e:
+                print(f"异步强制停止失败: {e}")
+        
+        import threading
+        threading.Thread(target=force_stop_async, daemon=True).start()
     
     def send_command(self, command: str):
         """发送命令到服务器"""
