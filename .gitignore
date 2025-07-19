@@ -24,8 +24,26 @@ __pycache__/
 *$py.class
 *.so
 
+# 构建输出
+dist/
+dist-standalone/
+build/
+*.dist/
+*.build/
+*.onefile-build/
+
+# Nuitka缓存
+.nuitka/
+
+# 打包文件
+*.exe
+*.zip
+*.tar.gz
+mc-server-manager*
+
 # 临时文件
 tmp_rovodev_*
+tmp_code_*
 
 # IDE文件
 .vscode/
@@ -36,3 +54,6 @@ tmp_rovodev_*
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# 日志文件
+*.log

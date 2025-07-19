@@ -34,6 +34,36 @@ Now powered by Python! (Original batch version moved to `old/` folder)
 
 The program will automatically create configuration files and handle EULA agreement. You just need to have a server core file to get started.
 
+# 🔧 Building from Source
+
+If you want to build the executable yourself:
+
+**Prerequisites:**
+- Python 3.6 or higher
+- Nuitka (will be installed automatically)
+
+**Build Instructions:**
+
+1. **Automatic build (recommended):**
+   - **Windows**: Run `build.bat`
+   - **Linux/macOS**: Run `./build.sh`
+
+2. **Manual build:**
+   ```bash
+   # Install Nuitka
+   pip install nuitka ordered-set
+   
+   # Build (single file)
+   python -m nuitka --standalone --onefile --output-filename=mc-server-manager --enable-plugin=no-qt --assume-yes-for-downloads --output-dir=dist start.py
+   ```
+
+3. **Using the build script:**
+   ```bash
+   python build.py
+   ```
+
+**GitHub Actions:**
+This project includes automated builds via GitHub Actions. Executables are automatically built for Windows, Linux, and macOS on every release.
 
 # Wish List
 

@@ -7,6 +7,13 @@ Author: PowerCMD (Python version)
 License: GPL-3.0
 """
 
+try:
+    from version import __version__, __author__, __description__
+except ImportError:
+    __version__ = "2.0.0"
+    __author__ = "PowerCMD"
+    __description__ = "Minecraft Server Manager - Python版本"
+
 import os
 import sys
 import subprocess
@@ -293,8 +300,8 @@ class MinecraftServerManager:
     
     def run(self):
         """运行主程序"""
-        print("Minecraft Server Manager - Python版本")
-        print("原作者: PowerCMD")
+        print(f"{__description__} v{__version__}")
+        print(f"原作者: {__author__}")
         print()
         
         while True:
