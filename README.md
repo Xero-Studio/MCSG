@@ -41,31 +41,26 @@ The program will automatically create configuration files and handle EULA agreem
 If you want to build the executable yourself:
 
 **Prerequisites:**
-- Python 3.6 or higher
-- Nuitka (will be installed automatically)
+- Python 3.9 or higher
+- PyInstaller (will be installed automatically)
 
 **Build Instructions:**
 
 1. **Automatic build (recommended):**
    - **Windows**: Run `build.bat`
-   - **Linux/macOS**: Run `./build.sh`
 
 2. **Manual build:**
    ```bash
-   # Install Nuitka
-   pip install nuitka ordered-set
+   # Install PyInstaller
+   pip install pyinstaller
+   pip install -r requirements.txt
    
    # Build (single file)
-   python -m nuitka --standalone --onefile --output-filename=mc-server-manager --enable-plugin=no-qt --assume-yes-for-downloads --output-dir=dist start.py
+   pyinstaller MinecraftServerManager.spec
    ```
 
-3. **Using the build script:**
-   ```bash
-   python build.py
-   ```
-
-**GitHub Actions:**
-This project includes automated builds via GitHub Actions. Executables are automatically built for Windows, Linux, and macOS on every release.
+**GitHub Actions (Recommended):**
+This project includes automated builds via GitHub Actions. **Pre-built executables are available in the [Releases](../../releases) section** - no need to build manually! Executables are automatically built for Windows on every release.
 
 # 🎯 Wish List
 
