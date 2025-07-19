@@ -970,8 +970,13 @@ class ConfigInterface(QWidget):
         basic_layout.addWidget(BodyLabel("内存分配:"), 0, 0)
         memory_layout = QVBoxLayout()
         
-        from qfluentwidgets import Slider
-        self.memory_slider = Slider(Qt.Horizontal, self)
+        try:
+            from qfluentwidgets import Slider
+            self.memory_slider = Slider(Qt.Horizontal, self)
+        except ImportError:
+            # 如果qfluentwidgets中没有Slider，使用PyQt5的
+            from PyQt5.QtWidgets import QSlider
+            self.memory_slider = QSlider(Qt.Horizontal, self)
         self.memory_slider.setRange(512, 16384)  # 512MB to 16GB
         self.memory_slider.setValue(2048)  # 默认2GB
         self.memory_slider.valueChanged.connect(self.update_memory_label)
@@ -1465,21 +1470,52 @@ class PluginInterface(QWidget):
         
         layout.addLayout(header_layout)
         
-        # 选项卡
-        from qfluentwidgets import TabWidget
-        self.tab_widget = TabWidget(self)
+        # 使用简单的按钮切换而不是选项卡
+        tab_button_layout = QHBoxLayout()
         
-        # 已安装插件选项卡
+        self.installed_button = PushButton("已安装插件", self)
+        self.installed_button.clicked.connect(lambda: self.switch_tab(0))
+        
+        self.available_button = PushButton("可用插件", self)
+        self.available_button.clicked.connect(lambda: self.switch_tab(1))
+        
+        tab_button_layout.addWidget(self.installed_button)
+        tab_button_layout.addWidget(self.available_button)
+        tab_button_layout.addStretch()
+        
+        layout.addLayout(tab_button_layout)
+        
+        # 创建堆叠widget来模拟选项卡
+        from PyQt5.QtWidgets import QStackedWidget
+        self.stacked_widget = QStackedWidget(self)
+        
+        # 已安装插件页面
         self.installed_tab = QWidget()
         self.init_installed_tab()
-        self.tab_widget.addTab(self.installed_tab, "已安装插件")
+        self.stacked_widget.addWidget(self.installed_tab)
         
-        # 可用插件选项卡
+        # 可用插件页面
         self.available_tab = QWidget()
         self.init_available_tab()
-        self.tab_widget.addTab(self.available_tab, "可用插件")
+        self.stacked_widget.addWidget(self.available_tab)
         
-        layout.addWidget(self.tab_widget)
+        # 默认显示已安装插件
+        self.stacked_widget.setCurrentIndex(0)
+        self.installed_button.setStyleSheet("background-color: #0078d4; color: white;")
+        
+        layout.addWidget(self.stacked_widget)
+    
+    def switch_tab(self, index):
+        """切换选项卡"""
+        self.stacked_widget.setCurrentIndex(index)
+        
+        # 更新按钮样式
+        if index == 0:
+            self.installed_button.setStyleSheet("background-color: #0078d4; color: white;")
+            self.available_button.setStyleSheet("")
+        else:
+            self.installed_button.setStyleSheet("")
+            self.available_button.setStyleSheet("background-color: #0078d4; color: white;")
     
     def init_installed_tab(self):
         """初始化已安装插件选项卡"""
