@@ -2,6 +2,7 @@
 
 PyQt-Fluent-Widgets>=1.1.0
 PyQt5>=5.15.0
+PyQt5-Qt5>=5.15.0
 
 # For better Windows integration
 pywin32>=227
