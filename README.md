@@ -4,16 +4,17 @@ English | [简体中文](README_ZH.md)
 # MC Server Manager
 
 
-Now powered by Python! (Original batch version moved to `old/` folder)
+Now powered by Python with modern GUI! (Original batch version moved to `old/` folder)
 
 
 # 🌟 Features
 
 
+- Modern PyQt GUI interface
+- Windows optimized
 - Compact and lightweight
-- Cross-platform support (Windows, Linux, macOS)
 - Convenient for common configuration changes
-- User-friendly configuration interface
+- User-friendly graphical interface
 - Automatic EULA handling
 - And more...
 
@@ -22,15 +23,16 @@ Now powered by Python! (Original batch version moved to `old/` folder)
 
 
 **Requirements:**
-- Python 3.6 or higher
+- Windows 10/11
+- Python 3.8 or higher
+- PyQt5/PyQt6
 - Java (for running Minecraft server)
 
 **Installation:**
 1. Download or clone this repository
-2. Make sure you have a Minecraft server jar file (e.g., `server.jar`) in the same directory
-3. Run the program:
-   - **Windows**: Double-click `start.bat` or run `python start.py`
-   - **Linux/macOS**: Run `./start.sh` or `python3 start.py`
+2. Install dependencies: `pip install -r requirements.txt`
+3. Make sure you have a Minecraft server jar file (e.g., `server.jar`) in the same directory
+4. Run the program: Double-click `start.bat` or run `python start.py`
 
 The program will automatically create configuration files and handle EULA agreement. You just need to have a server core file to get started.
 
@@ -69,10 +71,10 @@ This project includes automated builds via GitHub Actions. Executables are autom
 
 
 - [ ] Multilingual support
-- [x] Cross-platform Python version
-- [ ] GUI interface
+- [x] Windows GUI interface (PyQt)
 - [ ] Plugin management
 - [ ] Backup functionality
+- [ ] Server performance monitoring
 - [ ] More...
 
 

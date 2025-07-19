@@ -2,29 +2,31 @@
 
 # MC服务器管理器
 
-现在由Python驱动！（原批处理版本已移至 `old/` 文件夹）
+现在由Python + PyQt驱动的现代GUI！（原批处理版本已移至 `old/` 文件夹）
 
 # ✨ 特点
 
+- 现代化PyQt图形界面
+- Windows系统优化
 - 小巧轻快
-- 跨平台支持（Windows、Linux、macOS）
 - 常用配置更改方便
-- 用户友好的配置界面
+- 用户友好的图形界面
 - 自动处理EULA协议
 - 还有其他...
 
 # 📦 快速开始
 
 **系统要求：**
-- Python 3.6 或更高版本
+- Windows 10/11
+- Python 3.8 或更高版本
+- PyQt5/PyQt6
 - Java（用于运行Minecraft服务器）
 
 **安装步骤：**
 1. 下载或克隆此仓库
-2. 确保在同一目录下有Minecraft服务器jar文件（例如 `server.jar`）
-3. 运行程序：
-   - **Windows**: 双击 `start.bat` 或运行 `python start.py`
-   - **Linux/macOS**: 运行 `./start.sh` 或 `python3 start.py`
+2. 安装依赖：`pip install -r requirements.txt`
+3. 确保在同一目录下有Minecraft服务器jar文件（例如 `server.jar`）
+4. 运行程序：双击 `start.bat` 或运行 `python start.py`
 
 程序会自动创建配置文件并处理EULA协议。你只需要有一个服务器核心文件就可以开始使用了。
 
@@ -62,10 +64,10 @@
 # 愿望单
 
 - [ ] 多语言支持
-- [x] 跨平台Python版本
-- [ ] 图形用户界面
+- [x] Windows图形用户界面 (PyQt)
 - [ ] 插件管理
 - [ ] 备份功能
+- [ ] 服务器性能监控
 - [ ] 更多...
 
 # 作者B站

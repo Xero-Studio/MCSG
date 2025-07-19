@@ -38,19 +38,16 @@ def build_onefile():
     """尝试单文件构建"""
     print("尝试单文件构建...")
     
-    system = platform.system()
-    if system == "Windows":
-        output_name = "mc-server-manager.exe"
-    else:
-        output_name = "mc-server-manager"
+    output_name = "mc-server-manager.exe"
     
     cmd = [
         sys.executable, "-m", "nuitka",
         "--standalone",
         "--onefile",
         f"--output-filename={output_name}",
-        "--enable-plugin=no-qt",
+        "--enable-plugin=pyside2,pyside6,pyqt5,pyqt6",
         "--assume-yes-for-downloads",
+        "--windows-disable-console",
         "--output-dir=dist",
         "start.py"
     ]
@@ -70,9 +67,10 @@ def build_standalone():
     cmd = [
         sys.executable, "-m", "nuitka",
         "--standalone",
-        "--output-filename=mc-server-manager",
-        "--enable-plugin=no-qt",
+        "--output-filename=mc-server-manager.exe",
+        "--enable-plugin=pyside2,pyside6,pyqt5,pyqt6",
         "--assume-yes-for-downloads",
+        "--windows-disable-console",
         "--output-dir=dist-standalone",
         "start.py"
     ]
@@ -87,27 +85,19 @@ def build_standalone():
 
 def test_executable(dist_dir):
     """测试可执行文件"""
-    system = platform.system()
     
     if "standalone" in dist_dir:
         # 多文件模式
-        if system == "Windows":
-            exe_path = Path(dist_dir) / "start.dist" / "mc-server-manager.exe"
-        else:
-            exe_path = Path(dist_dir) / "start.dist" / "mc-server-manager"
+        exe_path = Path(dist_dir) / "start.dist" / "mc-server-manager.exe"
     else:
         # 单文件模式
-        if system == "Windows":
-            exe_path = Path(dist_dir) / "mc-server-manager.exe"
-        else:
-            exe_path = Path(dist_dir) / "mc-server-manager"
+        exe_path = Path(dist_dir) / "mc-server-manager.exe"
     
     if exe_path.exists():
         print(f"✓ 可执行文件已创建: {exe_path}")
         print(f"文件大小: {exe_path.stat().st_size / 1024 / 1024:.2f} MB")
         
-        if system != "Windows":
-            os.chmod(exe_path, 0o755)
+        # Windows可执行文件，无需设置权限
         
         return True
     else:

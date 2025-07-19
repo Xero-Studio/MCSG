@@ -1,8 +1,11 @@
 # Minecraft Server Manager Requirements
-# This project uses only Python standard library modules
-# No external dependencies required
+# Windows GUI version with PyQt
 
-# Python >= 3.6 is required for:
-# - f-string formatting
-# - pathlib module
-# - configparser improvements
+PyQt5>=5.15.0
+# Alternative: PyQt6>=6.0.0
+
+# For better Windows integration
+pywin32>=227
+
+# Optional: For enhanced GUI features
+qtawesome>=1.0.0
