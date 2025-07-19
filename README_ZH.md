@@ -84,3 +84,7 @@
 ## 👨‍💻 作者 B站
 
 [点击这里!](https://space.bilibili.com/3546703915387263)
+
+## 星标数量
+
+[![Star History Chart](https://api.star-history.com/svg?repos=CatEazy/MC-Server-MGR&type=Date)](https://www.star-history.com/#CatEazy/MC-Server-MGR&Date)

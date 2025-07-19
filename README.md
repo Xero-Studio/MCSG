@@ -92,3 +92,8 @@ This project includes automated builds via GitHub Actions. **Pre-built executabl
 
 
 [Click here!](https://space.bilibili.com/3546703915387263)
+
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=CatEazy/MC-Server-MGR&type=Date)](https://www.star-history.com/#CatEazy/MC-Server-MGR&Date)

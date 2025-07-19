@@ -23,6 +23,9 @@ from qfluentwidgets import (
 )
 
 from mc_server_manager import MinecraftServerManager
+from multi_server_manager import MultiServerManager, ServerInstance
+from server_template import ServerTemplateManager
+from backup_manager import BackupManager
 
 
 class ServerOutputThread(QThread):
@@ -54,14 +57,22 @@ class MainWindow(FluentWindow):
     
     def __init__(self):
         super().__init__()
-        self.manager = MinecraftServerManager()
+        # 初始化管理器
+        self.multi_server_manager = MultiServerManager()
+        self.template_manager = ServerTemplateManager()
+        self.backup_manager = BackupManager()
+        
+        # 当前选中的服务器
+        self.current_server: Optional[ServerInstance] = None
+        self.manager: Optional[MinecraftServerManager] = None
+        
         self.output_thread: Optional[ServerOutputThread] = None
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.update_server_status)
         self.status_timer.start(1000)  # 每秒更新一次状态
         
         self.init_ui()
-        self.load_config()
+        self.load_default_server()
     
     def init_ui(self):
         """初始化用户界面"""
@@ -69,6 +80,9 @@ class MainWindow(FluentWindow):
         self.resize(1000, 700)
         
         # 创建界面
+        self.server_list_interface = ServerListInterface(self)
+        self.server_list_interface.setObjectName("ServerListInterface")
+        
         self.server_interface = ServerInterface(self)
         self.server_interface.setObjectName("ServerInterface")
         
@@ -78,7 +92,16 @@ class MainWindow(FluentWindow):
         self.console_interface = ConsoleInterface(self)
         self.console_interface.setObjectName("ConsoleInterface")
         
+        self.backup_interface = BackupInterface(self)
+        self.backup_interface.setObjectName("BackupInterface")
+        
         # 添加到导航
+        self.addSubInterface(
+            self.server_list_interface, 
+            FluentIcon.MENU, 
+            "服务器列表",
+            NavigationItemPosition.TOP
+        )
         self.addSubInterface(
             self.server_interface, 
             FluentIcon.PLAY, 
@@ -97,12 +120,39 @@ class MainWindow(FluentWindow):
             "控制台",
             NavigationItemPosition.TOP
         )
+        self.addSubInterface(
+            self.backup_interface, 
+            FluentIcon.SAVE, 
+            "备份管理",
+            NavigationItemPosition.TOP
+        )
         
         # 设置默认界面
-        self.stackedWidget.setCurrentWidget(self.server_interface)
+        self.stackedWidget.setCurrentWidget(self.server_list_interface)
+    
+    def load_default_server(self):
+        """加载默认服务器或创建新服务器"""
+        servers = self.multi_server_manager.get_all_servers()
+        if servers:
+            self.select_server(servers[0].server_id)
+        else:
+            # 创建默认服务器
+            server_id = self.multi_server_manager.create_server("默认服务器", "原版生存服务器")
+            self.select_server(server_id)
+    
+    def select_server(self, server_id: str):
+        """选择服务器"""
+        self.current_server = self.multi_server_manager.get_server(server_id)
+        if self.current_server:
+            self.manager = self.current_server.manager
+            self.load_config()
+            self.server_list_interface.refresh_server_list()
     
     def load_config(self):
         """加载配置到界面"""
+        if not self.manager:
+            return
+            
         config = self.config_interface
         config.memory_edit.setText(self.manager.get_config_value('memory'))
         config.core_edit.setText(self.manager.get_config_value('core'))
@@ -126,22 +176,28 @@ class MainWindow(FluentWindow):
     
     def save_config(self):
         """保存配置"""
+        if not self.manager or not self.current_server:
+            return
+            
         config = self.config_interface
-        self.manager.set_config_value('memory', config.memory_edit.text())
-        self.manager.set_config_value('core', config.core_edit.text())
-        self.manager.set_config_value('motd', config.motd_edit.text())
-        self.manager.set_config_value('port', str(config.port_spin.value()))
-        self.manager.set_config_value('max_players', str(config.max_players_spin.value()))
-        self.manager.set_config_value('view_distance', str(config.view_distance_spin.value()))
-        self.manager.set_config_value('online_mode', 'true' if config.online_mode_check.isChecked() else 'false')
-        self.manager.set_config_value('jvm_args', config.jvm_args_edit.text())
-        self.manager.set_config_value('server_args', config.server_args_edit.text())
-        self.manager.set_config_value('level_seed', config.seed_edit.text())
-        self.manager.set_config_value('difficulty', config.difficulty_combo.currentText().lower())
-        self.manager.set_config_value('gamemode', config.gamemode_combo.currentText().lower())
-        self.manager.set_config_value('pvp', 'true' if config.pvp_check.isChecked() else 'false')
+        config_dict = {
+            'memory': config.memory_edit.text(),
+            'core': config.core_edit.text(),
+            'motd': config.motd_edit.text(),
+            'port': str(config.port_spin.value()),
+            'max_players': str(config.max_players_spin.value()),
+            'view_distance': str(config.view_distance_spin.value()),
+            'online_mode': 'true' if config.online_mode_check.isChecked() else 'false',
+            'jvm_args': config.jvm_args_edit.text(),
+            'server_args': config.server_args_edit.text(),
+            'level_seed': config.seed_edit.text(),
+            'difficulty': config.difficulty_combo.currentText().lower(),
+            'gamemode': config.gamemode_combo.currentText().lower(),
+            'pvp': 'true' if config.pvp_check.isChecked() else 'false'
+        }
         
-        self.manager.save_config()
+        # 更新多服务器管理器中的配置
+        self.multi_server_manager.update_server_config(self.current_server.server_id, config_dict)
         
         InfoBar.success(
             title="保存成功",
@@ -166,8 +222,20 @@ class MainWindow(FluentWindow):
     
     def start_server(self):
         """启动服务器"""
+        if not self.current_server:
+            InfoBar.error(
+                title="错误",
+                content="请先选择一个服务器！",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self
+            )
+            return
+        
         # 检查核心文件
-        core_file = self.config_interface.core_edit.text()
+        core_file = os.path.join(self.current_server.directory, self.current_server.config.get('core', 'server.jar'))
         if not os.path.exists(core_file):
             InfoBar.error(
                 title="错误",
@@ -184,15 +252,15 @@ class MainWindow(FluentWindow):
         self.save_config()
         
         try:
-            if self.manager.start_server():
+            if self.current_server.start():
                 # 启动输出监控线程
-                self.output_thread = ServerOutputThread(self.manager)
+                self.output_thread = ServerOutputThread(self.current_server.manager)
                 self.output_thread.output_received.connect(self.console_interface.append_output)
                 self.output_thread.start()
                 
                 InfoBar.success(
                     title="启动成功",
-                    content="服务器正在启动...",
+                    content=f"服务器 '{self.current_server.name}' 正在启动...",
                     orient=Qt.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
@@ -271,6 +339,379 @@ class MainWindow(FluentWindow):
         is_running = self.manager.is_server_running()
         self.server_interface.update_status(is_running)
         self.console_interface.update_status(is_running)
+
+
+class ServerListInterface(QWidget):
+    """服务器列表界面"""
+    
+    def __init__(self, parent: MainWindow):
+        super().__init__()
+        self.parent = parent
+        self.init_ui()
+    
+    def init_ui(self):
+        """初始化界面"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # 标题和操作按钮
+        header_layout = QHBoxLayout()
+        title_label = StrongBodyLabel("服务器管理")
+        title_label.setStyleSheet("font-size: 20px;")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        
+        self.create_server_button = PushButton("创建服务器", self)
+        self.create_server_button.setIcon(FluentIcon.ADD)
+        self.create_server_button.clicked.connect(self.create_server)
+        header_layout.addWidget(self.create_server_button)
+        
+        layout.addLayout(header_layout)
+        
+        # 服务器列表
+        self.server_list_card = HeaderCardWidget(self)
+        self.server_list_card.setTitle("服务器列表")
+        
+        self.server_list_layout = QVBoxLayout()
+        self.refresh_server_list()
+        
+        self.server_list_card.viewLayout.addLayout(self.server_list_layout)
+        layout.addWidget(self.server_list_card)
+        
+        layout.addStretch()
+    
+    def refresh_server_list(self):
+        """刷新服务器列表"""
+        # 清空现有列表
+        for i in reversed(range(self.server_list_layout.count())):
+            child = self.server_list_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        # 添加服务器项
+        servers = self.parent.multi_server_manager.get_all_servers()
+        for server in servers:
+            server_widget = self.create_server_widget(server)
+            self.server_list_layout.addWidget(server_widget)
+        
+        if not servers:
+            no_servers_label = BodyLabel("暂无服务器，点击上方按钮创建新服务器")
+            no_servers_label.setAlignment(Qt.AlignCenter)
+            self.server_list_layout.addWidget(no_servers_label)
+    
+    def create_server_widget(self, server: ServerInstance):
+        """创建服务器项组件"""
+        server_card = SimpleCardWidget(self)
+        server_layout = QHBoxLayout(server_card)
+        
+        # 服务器信息
+        info_layout = QVBoxLayout()
+        name_label = StrongBodyLabel(server.name)
+        status_text = "运行中" if server.is_running() else "未运行"
+        status_color = "#107c10" if server.is_running() else "#d13438"
+        status_label = BodyLabel(f"状态: {status_text}")
+        status_label.setStyleSheet(f"color: {status_color};")
+        
+        port_label = BodyLabel(f"端口: {server.config.get('port', '未知')}")
+        
+        info_layout.addWidget(name_label)
+        info_layout.addWidget(status_label)
+        info_layout.addWidget(port_label)
+        
+        server_layout.addLayout(info_layout)
+        server_layout.addStretch()
+        
+        # 操作按钮
+        button_layout = QHBoxLayout()
+        
+        select_button = PushButton("选择", self)
+        select_button.setIcon(FluentIcon.ACCEPT)
+        select_button.clicked.connect(lambda: self.select_server(server.server_id))
+        
+        backup_button = PushButton("备份", self)
+        backup_button.setIcon(FluentIcon.SAVE)
+        backup_button.clicked.connect(lambda: self.backup_server(server.server_id))
+        
+        delete_button = PushButton("删除", self)
+        delete_button.setIcon(FluentIcon.DELETE)
+        delete_button.clicked.connect(lambda: self.delete_server(server.server_id))
+        
+        button_layout.addWidget(select_button)
+        button_layout.addWidget(backup_button)
+        button_layout.addWidget(delete_button)
+        
+        server_layout.addLayout(button_layout)
+        
+        return server_card
+    
+    def create_server(self):
+        """创建新服务器"""
+        from qfluentwidgets import MessageBox, LineEdit, ComboBox
+        
+        # 创建对话框
+        dialog = MessageBox("创建服务器", "请输入服务器信息", self)
+        
+        # 添加输入控件
+        name_edit = LineEdit()
+        name_edit.setPlaceholderText("服务器名称")
+        
+        template_combo = ComboBox()
+        template_names = self.parent.template_manager.get_template_names()
+        template_combo.addItems(template_names)
+        
+        dialog.textLayout.addWidget(BodyLabel("服务器名称:"))
+        dialog.textLayout.addWidget(name_edit)
+        dialog.textLayout.addWidget(BodyLabel("服务器模板:"))
+        dialog.textLayout.addWidget(template_combo)
+        
+        if dialog.exec():
+            name = name_edit.text().strip()
+            template = template_combo.currentText()
+            
+            if name:
+                server_id = self.parent.multi_server_manager.create_server(name, template)
+                self.refresh_server_list()
+                
+                InfoBar.success(
+                    title="创建成功",
+                    content=f"服务器 '{name}' 创建成功！",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self.parent
+                )
+    
+    def select_server(self, server_id: str):
+        """选择服务器"""
+        self.parent.select_server(server_id)
+        InfoBar.success(
+            title="选择成功",
+            content="服务器已选择",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=2000,
+            parent=self.parent
+        )
+    
+    def backup_server(self, server_id: str):
+        """备份服务器"""
+        server = self.parent.multi_server_manager.get_server(server_id)
+        if server:
+            backup_info = self.parent.backup_manager.create_backup(
+                server_id, server.name, server.directory, "manual", "手动备份"
+            )
+            if backup_info:
+                InfoBar.success(
+                    title="备份成功",
+                    content=f"服务器 '{server.name}' 备份完成",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self.parent
+                )
+            else:
+                InfoBar.error(
+                    title="备份失败",
+                    content="备份创建失败",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self.parent
+                )
+    
+    def delete_server(self, server_id: str):
+        """删除服务器"""
+        from qfluentwidgets import MessageBox
+        
+        server = self.parent.multi_server_manager.get_server(server_id)
+        if not server:
+            return
+        
+        dialog = MessageBox(
+            "确认删除",
+            f"确定要删除服务器 '{server.name}' 吗？\n此操作不可撤销！",
+            self
+        )
+        
+        if dialog.exec():
+            if self.parent.multi_server_manager.delete_server(server_id):
+                self.refresh_server_list()
+                InfoBar.success(
+                    title="删除成功",
+                    content=f"服务器 '{server.name}' 已删除",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self.parent
+                )
+
+
+class BackupInterface(QWidget):
+    """备份管理界面"""
+    
+    def __init__(self, parent: MainWindow):
+        super().__init__()
+        self.parent = parent
+        self.init_ui()
+    
+    def init_ui(self):
+        """初始化界面"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # 标题和统计信息
+        header_layout = QHBoxLayout()
+        title_label = StrongBodyLabel("备份管理")
+        title_label.setStyleSheet("font-size: 20px;")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        
+        # 统计信息
+        stats = self.parent.backup_manager.get_backup_statistics()
+        stats_label = BodyLabel(f"总备份数: {stats['total_backups']} | 总大小: {stats['total_size_mb']} MB")
+        header_layout.addWidget(stats_label)
+        
+        layout.addLayout(header_layout)
+        
+        # 备份列表
+        backup_card = HeaderCardWidget(self)
+        backup_card.setTitle("备份列表")
+        
+        self.backup_list_layout = QVBoxLayout()
+        self.refresh_backup_list()
+        
+        backup_card.viewLayout.addLayout(self.backup_list_layout)
+        layout.addWidget(backup_card)
+        
+        layout.addStretch()
+    
+    def refresh_backup_list(self):
+        """刷新备份列表"""
+        # 清空现有列表
+        for i in reversed(range(self.backup_list_layout.count())):
+            child = self.backup_list_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        # 添加备份项
+        backups = self.parent.backup_manager.get_all_backups()
+        for backup in backups[:20]:  # 只显示最新的20个备份
+            backup_widget = self.create_backup_widget(backup)
+            self.backup_list_layout.addWidget(backup_widget)
+        
+        if not backups:
+            no_backups_label = BodyLabel("暂无备份")
+            no_backups_label.setAlignment(Qt.AlignCenter)
+            self.backup_list_layout.addWidget(no_backups_label)
+    
+    def create_backup_widget(self, backup):
+        """创建备份项组件"""
+        backup_card = SimpleCardWidget(self)
+        backup_layout = QHBoxLayout(backup_card)
+        
+        # 备份信息
+        info_layout = QVBoxLayout()
+        name_label = StrongBodyLabel(f"{backup.server_name}")
+        time_label = BodyLabel(f"时间: {backup.backup_time[:19]}")
+        size_label = BodyLabel(f"大小: {self.parent.backup_manager.format_size(backup.backup_size)}")
+        type_label = BodyLabel(f"类型: {backup.backup_type}")
+        
+        info_layout.addWidget(name_label)
+        info_layout.addWidget(time_label)
+        info_layout.addWidget(size_label)
+        info_layout.addWidget(type_label)
+        
+        backup_layout.addLayout(info_layout)
+        backup_layout.addStretch()
+        
+        # 操作按钮
+        button_layout = QHBoxLayout()
+        
+        restore_button = PushButton("恢复", self)
+        restore_button.setIcon(FluentIcon.SYNC)
+        restore_button.clicked.connect(lambda: self.restore_backup(backup.backup_id))
+        
+        delete_button = PushButton("删除", self)
+        delete_button.setIcon(FluentIcon.DELETE)
+        delete_button.clicked.connect(lambda: self.delete_backup(backup.backup_id))
+        
+        button_layout.addWidget(restore_button)
+        button_layout.addWidget(delete_button)
+        
+        backup_layout.addLayout(button_layout)
+        
+        return backup_card
+    
+    def restore_backup(self, backup_id: str):
+        """恢复备份"""
+        from qfluentwidgets import MessageBox
+        
+        backup = self.parent.backup_manager.get_backup_by_id(backup_id)
+        if not backup:
+            return
+        
+        dialog = MessageBox(
+            "确认恢复",
+            f"确定要恢复备份 '{backup.server_name}' 吗？\n当前服务器数据将被覆盖！",
+            self
+        )
+        
+        if dialog.exec():
+            server = self.parent.multi_server_manager.get_server(backup.server_id)
+            if server and self.parent.backup_manager.restore_backup(backup_id, server.directory):
+                InfoBar.success(
+                    title="恢复成功",
+                    content=f"备份已恢复到服务器 '{backup.server_name}'",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self.parent
+                )
+            else:
+                InfoBar.error(
+                    title="恢复失败",
+                    content="备份恢复失败",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self.parent
+                )
+    
+    def delete_backup(self, backup_id: str):
+        """删除备份"""
+        from qfluentwidgets import MessageBox
+        
+        backup = self.parent.backup_manager.get_backup_by_id(backup_id)
+        if not backup:
+            return
+        
+        dialog = MessageBox(
+            "确认删除",
+            f"确定要删除备份 '{backup.server_name}' 吗？\n此操作不可撤销！",
+            self
+        )
+        
+        if dialog.exec():
+            if self.parent.backup_manager.delete_backup(backup_id):
+                self.refresh_backup_list()
+                InfoBar.success(
+                    title="删除成功",
+                    content="备份已删除",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self.parent
+                )
 
 
 class ServerInterface(QWidget):
