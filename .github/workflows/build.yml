@@ -29,7 +29,7 @@ jobs:
     
     - name: Build executable
       run: |
-        python -m nuitka --standalone --onefile --output-filename=mc-server-manager.exe --enable-plugin=pyside2,pyside6,pyqt5,pyqt6 --assume-yes-for-downloads --output-dir=dist start.py
+        python -m nuitka --standalone --onefile --output-filename=mc-server-manager.exe --enable-plugin=pyqt5 --assume-yes-for-downloads --windows-disable-console --output-dir=dist start.py
     
     - name: Test executable
       run: |
