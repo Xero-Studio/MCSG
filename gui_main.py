@@ -6,13 +6,15 @@ Minecraft Server Manager
 
 import sys
 import os
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QGridLayout, QLabel, QLineEdit, 
-                             QPushButton, QTextEdit, QComboBox, QSpinBox,
-                             QCheckBox, QGroupBox, QTabWidget, QMessageBox,
-                             QFileDialog, QProgressBar, QSplitter)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt5.QtGui import QIcon, QFont, QPixmap
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QMessageBox, QFileDialog
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QIcon, QFont
+
+from qfluentwidgets import (FluentWindow, NavigationItemPosition, FluentIcon,
+                           PushButton, LineEdit, SpinBox, CheckBox, TextEdit,
+                           ComboBox, InfoBar, InfoBarPosition, MessageBox,
+                           CardWidget, HeaderCardWidget, SimpleCardWidget,
+                           StrongBodyLabel, BodyLabel, CaptionLabel)
 
 
 from mc_server_manager import MinecraftServerManager
@@ -78,7 +80,7 @@ class ServerThread(QThread):
         if self.process:
             self.process.terminate()
 
-class MainWindow(QMainWindow):
+class MainWindow(FluentWindow):
     """主窗口"""
     
     def __init__(self):
@@ -91,214 +93,261 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """初始化UI"""
         self.setWindowTitle("Minecraft Server Manager")
-        self.setGeometry(100, 100, 800, 600)
+        self.resize(900, 700)
         
-        # 设置图标（如果有的话）
-        # self.setWindowIcon(QIcon('icon.ico'))
+        # 创建导航界面
+        self.server_interface = ServerInterface(self)
+        self.config_interface = ConfigInterface(self)
+        self.console_interface = ConsoleInterface(self)
         
-        # 创建中央widget
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+        # 添加导航项
+        self.addSubInterface(self.server_interface, FluentIcon.PLAY, "服务器控制")
+        self.addSubInterface(self.config_interface, FluentIcon.SETTING, "服务器配置") 
+        self.addSubInterface(self.console_interface, FluentIcon.COMMAND_PROMPT, "控制台")
         
-        # 创建主布局
-        main_layout = QVBoxLayout(central_widget)
+        # 设置默认界面
+        self.stackedWidget.setCurrentWidget(self.server_interface)
         
-        # 创建标签页
-        self.tab_widget = QTabWidget()
-        main_layout.addWidget(self.tab_widget)
+class ServerInterface(QWidget):
+    """服务器控制界面"""
+    
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+        self.init_ui()
         
-        # 创建各个标签页
-        self.create_server_tab()
-        self.create_config_tab()
-        self.create_console_tab()
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
         
-        # 状态栏
-        self.statusBar().showMessage("就绪")
+        # 状态卡片
+        self.status_card = HeaderCardWidget(self)
+        self.status_card.setTitle("服务器状态")
         
-    def create_server_tab(self):
-        """创建服务器控制标签页"""
-        server_widget = QWidget()
-        layout = QVBoxLayout(server_widget)
+        status_layout = QHBoxLayout()
+        status_layout.addWidget(BodyLabel("当前状态:"))
+        self.status_label = StrongBodyLabel("未运行")
+        self.status_label.setStyleSheet("color: red;")
+        status_layout.addWidget(self.status_label)
+        status_layout.addStretch()
         
-        # 服务器状态组
-        status_group = QGroupBox("服务器状态")
-        status_layout = QGridLayout(status_group)
+        self.status_card.viewLayout.addLayout(status_layout)
+        layout.addWidget(self.status_card)
         
-        self.status_label = QLabel("未运行")
-        self.status_label.setStyleSheet("color: red; font-weight: bold;")
-        status_layout.addWidget(QLabel("状态:"), 0, 0)
-        status_layout.addWidget(self.status_label, 0, 1)
+        # 控制按钮卡片
+        control_card = SimpleCardWidget(self)
+        control_layout = QHBoxLayout(control_card)
         
-        # 控制按钮
-        button_layout = QHBoxLayout()
-        self.start_button = QPushButton("启动服务器")
-        self.stop_button = QPushButton("停止服务器")
+        self.start_button = PushButton("启动服务器", self)
+        self.start_button.setIcon(FluentIcon.PLAY)
+        self.stop_button = PushButton("停止服务器", self)
+        self.stop_button.setIcon(FluentIcon.PAUSE)
         self.stop_button.setEnabled(False)
         
-        self.start_button.clicked.connect(self.start_server)
-        self.stop_button.clicked.connect(self.stop_server)
+        self.start_button.clicked.connect(self.parent.start_server)
+        self.stop_button.clicked.connect(self.parent.stop_server)
         
-        button_layout.addWidget(self.start_button)
-        button_layout.addWidget(self.stop_button)
-        button_layout.addStretch()
+        control_layout.addWidget(self.start_button)
+        control_layout.addWidget(self.stop_button)
+        control_layout.addStretch()
         
-        layout.addWidget(status_group)
-        layout.addLayout(button_layout)
+        layout.addWidget(control_card)
         layout.addStretch()
         
-        self.tab_widget.addTab(server_widget, "服务器控制")
+class ConfigInterface(QWidget):
+    """配置界面"""
+    
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+        self.init_ui()
         
-    def create_config_tab(self):
-        """创建配置标签页"""
-        config_widget = QWidget()
-        layout = QVBoxLayout(config_widget)
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
         
-        # 创建滚动区域
-        scroll_layout = QGridLayout()
+        # 基本配置卡片
+        basic_card = HeaderCardWidget(self)
+        basic_card.setTitle("基本配置")
         
-        # 基本配置
-        basic_group = QGroupBox("基本配置")
-        basic_layout = QGridLayout(basic_group)
+        basic_layout = QGridLayout()
         
         # 内存配置
-        basic_layout.addWidget(QLabel("内存分配:"), 0, 0)
-        self.memory_edit = QLineEdit()
+        basic_layout.addWidget(BodyLabel("内存分配:"), 0, 0)
+        self.memory_edit = LineEdit(self)
+        self.memory_edit.setPlaceholderText("例如: 2G, 4G")
         basic_layout.addWidget(self.memory_edit, 0, 1)
         
         # 服务器核心
-        basic_layout.addWidget(QLabel("服务器核心:"), 1, 0)
+        basic_layout.addWidget(BodyLabel("服务器核心:"), 1, 0)
         core_layout = QHBoxLayout()
-        self.core_edit = QLineEdit()
-        self.browse_core_button = QPushButton("浏览...")
-        self.browse_core_button.clicked.connect(self.browse_core)
+        self.core_edit = LineEdit(self)
+        self.browse_core_button = PushButton("浏览", self)
+        self.browse_core_button.setIcon(FluentIcon.FOLDER)
+        self.browse_core_button.clicked.connect(self.parent.browse_core)
         core_layout.addWidget(self.core_edit)
         core_layout.addWidget(self.browse_core_button)
         basic_layout.addLayout(core_layout, 1, 1)
         
-        # 服务器配置
-        server_group = QGroupBox("服务器配置")
-        server_layout = QGridLayout(server_group)
+        basic_card.viewLayout.addLayout(basic_layout)
+        layout.addWidget(basic_card)
+        
+        # 服务器配置卡片
+        server_card = HeaderCardWidget(self)
+        server_card.setTitle("服务器配置")
+        
+        server_layout = QGridLayout()
         
         # MOTD
-        server_layout.addWidget(QLabel("MOTD描述:"), 0, 0)
-        self.motd_edit = QLineEdit()
+        server_layout.addWidget(BodyLabel("MOTD描述:"), 0, 0)
+        self.motd_edit = LineEdit(self)
         self.motd_edit.setPlaceholderText("支持中文，如：欢迎来到我的服务器！")
         server_layout.addWidget(self.motd_edit, 0, 1)
         
         # 端口
-        server_layout.addWidget(QLabel("服务器端口:"), 1, 0)
-        self.port_spin = QSpinBox()
+        server_layout.addWidget(BodyLabel("服务器端口:"), 1, 0)
+        self.port_spin = SpinBox(self)
         self.port_spin.setRange(1, 65535)
         self.port_spin.setValue(25565)
         server_layout.addWidget(self.port_spin, 1, 1)
         
         # 最大玩家数
-        server_layout.addWidget(QLabel("最大玩家数:"), 2, 0)
-        self.max_players_spin = QSpinBox()
+        server_layout.addWidget(BodyLabel("最大玩家数:"), 2, 0)
+        self.max_players_spin = SpinBox(self)
         self.max_players_spin.setRange(1, 1000)
         self.max_players_spin.setValue(20)
         server_layout.addWidget(self.max_players_spin, 2, 1)
         
         # 视距
-        server_layout.addWidget(QLabel("视距:"), 3, 0)
-        self.view_distance_spin = QSpinBox()
+        server_layout.addWidget(BodyLabel("视距:"), 3, 0)
+        self.view_distance_spin = SpinBox(self)
         self.view_distance_spin.setRange(4, 32)
         self.view_distance_spin.setValue(10)
         server_layout.addWidget(self.view_distance_spin, 3, 1)
         
         # 正版验证
-        self.online_mode_check = QCheckBox("启用正版验证")
+        self.online_mode_check = CheckBox("启用正版验证", self)
         self.online_mode_check.setChecked(True)
         server_layout.addWidget(self.online_mode_check, 4, 0, 1, 2)
         
-        # 高级配置
-        advanced_group = QGroupBox("高级配置")
-        advanced_layout = QGridLayout(advanced_group)
+        server_card.viewLayout.addLayout(server_layout)
+        layout.addWidget(server_card)
+        
+        # 高级配置卡片
+        advanced_card = HeaderCardWidget(self)
+        advanced_card.setTitle("高级配置")
+        
+        advanced_layout = QGridLayout()
         
         # JVM参数
-        advanced_layout.addWidget(QLabel("JVM参数:"), 0, 0)
-        self.jvm_args_edit = QLineEdit()
+        advanced_layout.addWidget(BodyLabel("JVM参数:"), 0, 0)
+        self.jvm_args_edit = LineEdit(self)
         self.jvm_args_edit.setPlaceholderText("-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions")
         advanced_layout.addWidget(self.jvm_args_edit, 0, 1)
         
         # 服务器参数
-        advanced_layout.addWidget(QLabel("服务器参数:"), 1, 0)
-        self.server_args_edit = QLineEdit()
+        advanced_layout.addWidget(BodyLabel("服务器参数:"), 1, 0)
+        self.server_args_edit = LineEdit(self)
         self.server_args_edit.setPlaceholderText("nogui")
         advanced_layout.addWidget(self.server_args_edit, 1, 1)
         
         # 世界种子
-        advanced_layout.addWidget(QLabel("世界种子:"), 2, 0)
-        self.seed_edit = QLineEdit()
+        advanced_layout.addWidget(BodyLabel("世界种子:"), 2, 0)
+        self.seed_edit = LineEdit(self)
         advanced_layout.addWidget(self.seed_edit, 2, 1)
         
-        # 保存按钮
-        save_button = QPushButton("保存配置")
-        save_button.clicked.connect(self.save_config)
+        advanced_card.viewLayout.addLayout(advanced_layout)
+        layout.addWidget(advanced_card)
         
-        layout.addWidget(basic_group)
-        layout.addWidget(server_group)
-        layout.addWidget(advanced_group)
+        # 保存按钮
+        save_button = PushButton("保存配置", self)
+        save_button.setIcon(FluentIcon.SAVE)
+        save_button.clicked.connect(self.parent.save_config)
         layout.addWidget(save_button)
+        
         layout.addStretch()
         
-        self.tab_widget.addTab(config_widget, "服务器配置")
+class ConsoleInterface(QWidget):
+    """控制台界面"""
+    
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+        self.init_ui()
         
-    def create_console_tab(self):
-        """创建控制台标签页"""
-        console_widget = QWidget()
-        layout = QVBoxLayout(console_widget)
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # 控制台卡片
+        console_card = HeaderCardWidget(self)
+        console_card.setTitle("服务器控制台")
+        
+        console_layout = QVBoxLayout()
         
         # 控制台输出
-        self.console_output = QTextEdit()
+        self.console_output = TextEdit(self)
         self.console_output.setReadOnly(True)
         self.console_output.setFont(QFont("Consolas", 9))
-        layout.addWidget(self.console_output)
+        console_layout.addWidget(self.console_output)
         
         # 命令输入
         command_layout = QHBoxLayout()
-        self.command_input = QLineEdit()
+        self.command_input = LineEdit(self)
         self.command_input.setPlaceholderText("输入服务器命令...")
-        self.send_command_button = QPushButton("发送")
+        self.send_command_button = PushButton("发送", self)
+        self.send_command_button.setIcon(FluentIcon.SEND)
         self.send_command_button.setEnabled(False)
         
         command_layout.addWidget(self.command_input)
         command_layout.addWidget(self.send_command_button)
+        console_layout.addLayout(command_layout)
         
-        layout.addLayout(command_layout)
-        
-        self.tab_widget.addTab(console_widget, "控制台")
+        console_card.viewLayout.addLayout(console_layout)
+        layout.addWidget(console_card)
         
     def load_config(self):
         """加载配置到UI"""
-        self.memory_edit.setText(self.manager.get_config_value('memory'))
-        self.core_edit.setText(self.manager.get_config_value('core'))
-        self.motd_edit.setText(self.manager.get_config_value('motd'))
-        self.port_spin.setValue(int(self.manager.get_config_value('port')))
-        self.max_players_spin.setValue(int(self.manager.get_config_value('max_players')))
-        self.view_distance_spin.setValue(int(self.manager.get_config_value('view_distance')))
-        self.online_mode_check.setChecked(self.manager.get_config_value('online_mode').lower() == 'true')
-        self.jvm_args_edit.setText(self.manager.get_config_value('jvm_args'))
-        self.server_args_edit.setText(self.manager.get_config_value('server_args'))
-        self.seed_edit.setText(self.manager.get_config_value('level_seed'))
+        config = self.config_interface
+        config.memory_edit.setText(self.manager.get_config_value('memory'))
+        config.core_edit.setText(self.manager.get_config_value('core'))
+        config.motd_edit.setText(self.manager.get_config_value('motd'))
+        config.port_spin.setValue(int(self.manager.get_config_value('port')))
+        config.max_players_spin.setValue(int(self.manager.get_config_value('max_players')))
+        config.view_distance_spin.setValue(int(self.manager.get_config_value('view_distance')))
+        config.online_mode_check.setChecked(self.manager.get_config_value('online_mode').lower() == 'true')
+        config.jvm_args_edit.setText(self.manager.get_config_value('jvm_args'))
+        config.server_args_edit.setText(self.manager.get_config_value('server_args'))
+        config.seed_edit.setText(self.manager.get_config_value('level_seed'))
         
     def save_config(self):
         """保存配置"""
-        self.manager.set_config_value('memory', self.memory_edit.text())
-        self.manager.set_config_value('core', self.core_edit.text())
-        self.manager.set_config_value('motd', self.motd_edit.text())
-        self.manager.set_config_value('port', str(self.port_spin.value()))
-        self.manager.set_config_value('max_players', str(self.max_players_spin.value()))
-        self.manager.set_config_value('view_distance', str(self.view_distance_spin.value()))
-        self.manager.set_config_value('online_mode', 'true' if self.online_mode_check.isChecked() else 'false')
-        self.manager.set_config_value('jvm_args', self.jvm_args_edit.text())
-        self.manager.set_config_value('server_args', self.server_args_edit.text())
-        self.manager.set_config_value('level_seed', self.seed_edit.text())
+        config = self.config_interface
+        self.manager.set_config_value('memory', config.memory_edit.text())
+        self.manager.set_config_value('core', config.core_edit.text())
+        self.manager.set_config_value('motd', config.motd_edit.text())
+        self.manager.set_config_value('port', str(config.port_spin.value()))
+        self.manager.set_config_value('max_players', str(config.max_players_spin.value()))
+        self.manager.set_config_value('view_distance', str(config.view_distance_spin.value()))
+        self.manager.set_config_value('online_mode', 'true' if config.online_mode_check.isChecked() else 'false')
+        self.manager.set_config_value('jvm_args', config.jvm_args_edit.text())
+        self.manager.set_config_value('server_args', config.server_args_edit.text())
+        self.manager.set_config_value('level_seed', config.seed_edit.text())
         
         self.manager.save_config()
         
-        QMessageBox.information(self, "保存成功", "配置已保存！")
-        self.statusBar().showMessage("配置已保存", 3000)
+        InfoBar.success(
+            title="保存成功",
+            content="配置已保存！",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=3000,
+            parent=self
+        )
         
     def browse_core(self):
         """浏览服务器核心文件"""
@@ -306,12 +355,21 @@ class MainWindow(QMainWindow):
             self, "选择服务器核心文件", "", "JAR文件 (*.jar)"
         )
         if file_path:
-            self.core_edit.setText(os.path.basename(file_path))
+            self.config_interface.core_edit.setText(os.path.basename(file_path))
             
     def start_server(self):
         """启动服务器"""
-        if not os.path.exists(self.core_edit.text()):
-            QMessageBox.warning(self, "错误", f"服务器核心文件 '{self.core_edit.text()}' 不存在!")
+        core_file = self.config_interface.core_edit.text()
+        if not os.path.exists(core_file):
+            InfoBar.error(
+                title="错误",
+                content=f"服务器核心文件 '{core_file}' 不存在!",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
             return
             
         # 保存当前配置
@@ -324,15 +382,14 @@ class MainWindow(QMainWindow):
         self.server_thread.start()
         
         # 更新UI状态
-        self.start_button.setEnabled(False)
-        self.stop_button.setEnabled(True)
-        self.status_label.setText("运行中")
-        self.status_label.setStyleSheet("color: green; font-weight: bold;")
-        self.send_command_button.setEnabled(True)
-        self.statusBar().showMessage("服务器正在运行...")
+        self.server_interface.start_button.setEnabled(False)
+        self.server_interface.stop_button.setEnabled(True)
+        self.server_interface.status_label.setText("运行中")
+        self.server_interface.status_label.setStyleSheet("color: green;")
+        self.console_interface.send_command_button.setEnabled(True)
         
-        # 切换到控制台标签
-        self.tab_widget.setCurrentIndex(2)
+        # 切换到控制台界面
+        self.stackedWidget.setCurrentWidget(self.console_interface)
         
     def stop_server(self):
         """停止服务器"""
@@ -341,19 +398,18 @@ class MainWindow(QMainWindow):
             
     def server_finished(self):
         """服务器结束"""
-        self.start_button.setEnabled(True)
-        self.stop_button.setEnabled(False)
-        self.status_label.setText("未运行")
-        self.status_label.setStyleSheet("color: red; font-weight: bold;")
-        self.send_command_button.setEnabled(False)
-        self.statusBar().showMessage("服务器已停止")
+        self.server_interface.start_button.setEnabled(True)
+        self.server_interface.stop_button.setEnabled(False)
+        self.server_interface.status_label.setText("未运行")
+        self.server_interface.status_label.setStyleSheet("color: red;")
+        self.console_interface.send_command_button.setEnabled(False)
         self.append_console_output("=== 服务器已停止 ===")
         
     def append_console_output(self, text):
         """添加控制台输出"""
-        self.console_output.append(text)
+        self.console_interface.console_output.append(text)
         # 自动滚动到底部
-        scrollbar = self.console_output.verticalScrollBar()
+        scrollbar = self.console_interface.console_output.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
 def main():
