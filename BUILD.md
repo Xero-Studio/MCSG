@@ -13,22 +13,27 @@ This project uses Nuitka to compile Python code into standalone executables for 
 项目配置了GitHub Actions自动构建流程：
 - 每次推送到main/master分支时触发构建
 - 创建标签时自动发布
-- 支持多个Python版本（3.8-3.11）
+- 使用Python 3.10（稳定版本）
 - 支持三大操作系统平台
+- **优化后仅需3-4个jobs**（原来需要10+个jobs）
 
 The project is configured with GitHub Actions automated build pipeline:
 - Triggered on push to main/master branch
 - Automatic release on tag creation
-- Supports multiple Python versions (3.8-3.11)
+- Uses Python 3.10 (stable version)
 - Supports three major OS platforms
+- **Optimized to only 3-4 jobs** (originally required 10+ jobs)
 
 ### 构建矩阵 / Build Matrix
 
-| OS | Python Versions | Output |
-|---|---|---|
-| Windows | 3.8, 3.9, 3.10, 3.11 | `.exe` |
-| Linux | 3.9, 3.10, 3.11 | binary |
-| macOS | 3.9, 3.10, 3.11 | binary |
+| OS | Python Version | Output | Jobs |
+|---|---|---|---|
+| Windows | 3.10 | `.exe` | 1 |
+| Linux | 3.10 | binary | 1 |
+| macOS | 3.10 | binary | 1 |
+| **总计** | | | **3-4个jobs** |
+
+*优化说明：使用单一稳定的Python版本（3.10）减少构建复杂度*
 
 ## 本地构建 / Local Build
 

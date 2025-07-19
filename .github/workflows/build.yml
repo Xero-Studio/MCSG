@@ -1,4 +1,4 @@
-name: Build Executable with Nuitka
+name: Build Executable
 
 on:
   push:
@@ -12,114 +12,74 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11']
-        exclude:
-          # 减少构建矩阵，只在主要版本上构建
+        include:
+          - os: windows-latest
+            output: 'mc-server-manager.exe'
+            name: 'windows'
+          - os: ubuntu-latest  
+            output: 'mc-server-manager'
+            name: 'linux'
           - os: macos-latest
-            python-version: '3.8'
-          - os: ubuntu-latest
-            python-version: '3.8'
+            output: 'mc-server-manager'
+            name: 'macos'
     
     runs-on: ${{ matrix.os }}
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.10'
     
-    - name: Install dependencies
+    - name: Install Nuitka
       run: |
         python -m pip install --upgrade pip
         pip install nuitka ordered-set
     
-    - name: Install platform-specific dependencies (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        # Windows可能需要Visual Studio Build Tools
-        echo "Windows build environment ready"
-    
-    - name: Install platform-specific dependencies (Linux)
+    - name: Install system dependencies (Linux)
       if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ccache patchelf
+      run: sudo apt-get update && sudo apt-get install -y patchelf
     
-    - name: Install platform-specific dependencies (macOS)
-      if: runner.os == 'macOS'
+    - name: Build executable
       run: |
-        brew install ccache
+        python -m nuitka \
+          --standalone \
+          --onefile \
+          --output-filename=${{ matrix.output }} \
+          --enable-plugin=no-qt \
+          --assume-yes-for-downloads \
+          --output-dir=dist \
+          start.py
     
-    - name: Test Python version
+    - name: Test executable
       run: |
-        python --version
-        python -c "from mc_server_manager import MinecraftServerManager; print('Import test successful')"
-    
-    - name: Build with Nuitka (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        python -m nuitka --standalone --onefile --output-filename=mc-server-manager.exe --enable-plugin=no-qt --assume-yes-for-downloads --output-dir=dist start.py
-    
-    - name: Build with Nuitka (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        python -m nuitka --standalone --onefile --output-filename=mc-server-manager --enable-plugin=no-qt --assume-yes-for-downloads --output-dir=dist start.py
-    
-    - name: Build with Nuitka (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        python -m nuitka --standalone --onefile --output-filename=mc-server-manager --enable-plugin=no-qt --assume-yes-for-downloads --output-dir=dist start.py
-    
-    - name: Test executable (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        # 简单测试可执行文件是否能运行
-        echo "Testing Windows executable..."
-        # 由于是交互式程序，我们只检查文件是否存在
-        if (Test-Path "dist/mc-server-manager.exe") {
-          echo "✓ Executable created successfully"
-          Get-Item "dist/mc-server-manager.exe" | Select-Object Name, Length
-        } else {
-          echo "✗ Executable not found"
-          exit 1
-        }
-    
-    - name: Test executable (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        echo "Testing executable..."
-        if [ -f "dist/mc-server-manager" ]; then
-          echo "✓ Executable created successfully"
-          ls -lh dist/mc-server-manager
-          chmod +x dist/mc-server-manager
+        if [ -f "dist/${{ matrix.output }}" ]; then
+          echo "✓ Build successful"
+          ls -lh "dist/${{ matrix.output }}"
+          chmod +x "dist/${{ matrix.output }}" 2>/dev/null || true
         else
-          echo "✗ Executable not found"
+          echo "✗ Build failed"
           exit 1
-        fi
-    
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: mc-server-manager-${{ runner.os }}-py${{ matrix.python-version }}
-        path: |
-          dist/mc-server-manager*
-        retention-days: 30
-    
-    - name: Create release assets (on tag)
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        mkdir -p release
-        if [ "$RUNNER_OS" = "Windows" ]; then
-          cp dist/mc-server-manager.exe release/mc-server-manager-windows-py${{ matrix.python-version }}.exe
-        else
-          cp dist/mc-server-manager release/mc-server-manager-${{ runner.os }}-py${{ matrix.python-version }}
         fi
       shell: bash
     
-    - name: Upload release assets
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: mc-server-manager-${{ matrix.name }}
+        path: dist/${{ matrix.output }}
+        retention-days: 30
+    
+    - name: Prepare release asset
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        mkdir -p release
+        cp "dist/${{ matrix.output }}" "release/mc-server-manager-${{ matrix.name }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}"
+      shell: bash
+    
+    - name: Upload release asset
       if: startsWith(github.ref, 'refs/tags/')
       uses: actions/upload-artifact@v3
       with:
@@ -127,58 +87,13 @@ jobs:
         path: release/
         retention-days: 90
 
-  # 如果构建失败，尝试多文件模式
-  build-standalone:
-    if: failure()
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        python-version: ['3.10']
-    
-    runs-on: ${{ matrix.os }}
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install nuitka ordered-set
-    
-    - name: Build with Nuitka (Standalone mode)
-      run: |
-        python -m nuitka --standalone --output-filename=mc-server-manager --enable-plugin=no-qt --assume-yes-for-downloads --output-dir=dist-standalone start.py
-    
-    - name: Package standalone build
-      run: |
-        cd dist-standalone
-        if [ "$RUNNER_OS" = "Windows" ]; then
-          7z a ../mc-server-manager-standalone-${{ runner.os }}.zip start.dist/*
-        else
-          tar -czf ../mc-server-manager-standalone-${{ runner.os }}.tar.gz start.dist/
-        fi
-      shell: bash
-    
-    - name: Upload standalone artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: mc-server-manager-standalone-${{ runner.os }}
-        path: |
-          mc-server-manager-standalone-${{ runner.os }}.*
-        retention-days: 30
-
-  create-release:
+  release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     
     steps:
-    - name: Download all artifacts
+    - name: Download release assets
       uses: actions/download-artifact@v3
       with:
         name: release-assets
