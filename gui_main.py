@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Minecraft Server Manager - PyQt GUI版本
-专为Windows设计的图形界面
+Minecraft Server Manager
 """
 
 import sys
@@ -15,12 +14,6 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt5.QtGui import QIcon, QFont, QPixmap
 
-try:
-    from version import __version__, __author__, __description__
-except ImportError:
-    __version__ = "2.0.0"
-    __author__ = "PowerCMD"
-    __description__ = "Minecraft Server Manager - GUI版本"
 
 from mc_server_manager import MinecraftServerManager
 import subprocess
@@ -97,7 +90,7 @@ class MainWindow(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle(f"{__description__} v{__version__}")
+        self.setWindowTitle("Minecraft Server Manager")
         self.setGeometry(100, 100, 800, 600)
         
         # 设置图标（如果有的话）
@@ -367,7 +360,6 @@ def main():
     """主函数"""
     app = QApplication(sys.argv)
     app.setApplicationName("MC Server Manager")
-    app.setApplicationVersion(__version__)
     
     # 设置应用样式
     app.setStyle('Fusion')

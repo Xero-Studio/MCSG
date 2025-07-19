@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Minecraft Server Manager 启动脚本
-Windows GUI版本
+Minecraft Server Manager
 """
 
 import sys

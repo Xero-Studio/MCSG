@@ -1,5 +1,4 @@
-# Minecraft Server Manager Requirements
-# Windows GUI version with PyQt
+# Requirements
 
 PyQt5>=5.15.0
 # Alternative: PyQt6>=6.0.0
