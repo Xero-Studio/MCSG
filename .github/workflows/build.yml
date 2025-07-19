@@ -44,14 +44,7 @@ jobs:
     
     - name: Build executable
       run: |
-        python -m nuitka \
-          --standalone \
-          --onefile \
-          --output-filename=${{ matrix.output }} \
-          --enable-plugin=no-qt \
-          --assume-yes-for-downloads \
-          --output-dir=dist \
-          start.py
+        python -m nuitka --standalone --onefile --output-filename=${{ matrix.output }} --enable-plugin=no-qt --assume-yes-for-downloads --output-dir=dist start.py
     
     - name: Test executable
       run: |
