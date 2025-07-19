@@ -108,6 +108,109 @@ class MainWindow(FluentWindow):
         # 设置默认界面
         self.stackedWidget.setCurrentWidget(self.server_interface)
         
+    def load_config(self):
+        """加载配置到UI"""
+        config = self.config_interface
+        config.memory_edit.setText(self.manager.get_config_value('memory'))
+        config.core_edit.setText(self.manager.get_config_value('core'))
+        config.motd_edit.setText(self.manager.get_config_value('motd'))
+        config.port_spin.setValue(int(self.manager.get_config_value('port')))
+        config.max_players_spin.setValue(int(self.manager.get_config_value('max_players')))
+        config.view_distance_spin.setValue(int(self.manager.get_config_value('view_distance')))
+        config.online_mode_check.setChecked(self.manager.get_config_value('online_mode').lower() == 'true')
+        config.jvm_args_edit.setText(self.manager.get_config_value('jvm_args'))
+        config.server_args_edit.setText(self.manager.get_config_value('server_args'))
+        config.seed_edit.setText(self.manager.get_config_value('level_seed'))
+        
+    def save_config(self):
+        """保存配置"""
+        config = self.config_interface
+        self.manager.set_config_value('memory', config.memory_edit.text())
+        self.manager.set_config_value('core', config.core_edit.text())
+        self.manager.set_config_value('motd', config.motd_edit.text())
+        self.manager.set_config_value('port', str(config.port_spin.value()))
+        self.manager.set_config_value('max_players', str(config.max_players_spin.value()))
+        self.manager.set_config_value('view_distance', str(config.view_distance_spin.value()))
+        self.manager.set_config_value('online_mode', 'true' if config.online_mode_check.isChecked() else 'false')
+        self.manager.set_config_value('jvm_args', config.jvm_args_edit.text())
+        self.manager.set_config_value('server_args', config.server_args_edit.text())
+        self.manager.set_config_value('level_seed', config.seed_edit.text())
+        
+        self.manager.save_config()
+        
+        InfoBar.success(
+            title="保存成功",
+            content="配置已保存！",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=3000,
+            parent=self
+        )
+        
+    def browse_core(self):
+        """浏览服务器核心文件"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "选择服务器核心文件", "", "JAR文件 (*.jar)"
+        )
+        if file_path:
+            self.config_interface.core_edit.setText(os.path.basename(file_path))
+            
+    def start_server(self):
+        """启动服务器"""
+        core_file = self.config_interface.core_edit.text()
+        if not os.path.exists(core_file):
+            InfoBar.error(
+                title="错误",
+                content=f"服务器核心文件 '{core_file}' 不存在!",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            return
+            
+        # 保存当前配置
+        self.save_config()
+        
+        # 启动服务器线程
+        self.server_thread = ServerThread(self.manager)
+        self.server_thread.output_signal.connect(self.append_console_output)
+        self.server_thread.finished_signal.connect(self.server_finished)
+        self.server_thread.start()
+        
+        # 更新UI状态
+        self.server_interface.start_button.setEnabled(False)
+        self.server_interface.stop_button.setEnabled(True)
+        self.server_interface.status_label.setText("运行中")
+        self.server_interface.status_label.setStyleSheet("color: green;")
+        self.console_interface.send_command_button.setEnabled(True)
+        
+        # 切换到控制台界面
+        self.stackedWidget.setCurrentWidget(self.console_interface)
+        
+    def stop_server(self):
+        """停止服务器"""
+        if self.server_thread:
+            self.server_thread.stop_server()
+            
+    def server_finished(self):
+        """服务器结束"""
+        self.server_interface.start_button.setEnabled(True)
+        self.server_interface.stop_button.setEnabled(False)
+        self.server_interface.status_label.setText("未运行")
+        self.server_interface.status_label.setStyleSheet("color: red;")
+        self.console_interface.send_command_button.setEnabled(False)
+        self.append_console_output("=== 服务器已停止 ===")
+        
+    def append_console_output(self, text):
+        """添加控制台输出"""
+        self.console_interface.console_output.append(text)
+        # 自动滚动到底部
+        scrollbar = self.console_interface.console_output.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
 class ServerInterface(QWidget):
     """服务器控制界面"""
     
@@ -308,122 +411,26 @@ class ConsoleInterface(QWidget):
         
         console_card.viewLayout.addLayout(console_layout)
         layout.addWidget(console_card)
-        
-    def load_config(self):
-        """加载配置到UI"""
-        config = self.config_interface
-        config.memory_edit.setText(self.manager.get_config_value('memory'))
-        config.core_edit.setText(self.manager.get_config_value('core'))
-        config.motd_edit.setText(self.manager.get_config_value('motd'))
-        config.port_spin.setValue(int(self.manager.get_config_value('port')))
-        config.max_players_spin.setValue(int(self.manager.get_config_value('max_players')))
-        config.view_distance_spin.setValue(int(self.manager.get_config_value('view_distance')))
-        config.online_mode_check.setChecked(self.manager.get_config_value('online_mode').lower() == 'true')
-        config.jvm_args_edit.setText(self.manager.get_config_value('jvm_args'))
-        config.server_args_edit.setText(self.manager.get_config_value('server_args'))
-        config.seed_edit.setText(self.manager.get_config_value('level_seed'))
-        
-    def save_config(self):
-        """保存配置"""
-        config = self.config_interface
-        self.manager.set_config_value('memory', config.memory_edit.text())
-        self.manager.set_config_value('core', config.core_edit.text())
-        self.manager.set_config_value('motd', config.motd_edit.text())
-        self.manager.set_config_value('port', str(config.port_spin.value()))
-        self.manager.set_config_value('max_players', str(config.max_players_spin.value()))
-        self.manager.set_config_value('view_distance', str(config.view_distance_spin.value()))
-        self.manager.set_config_value('online_mode', 'true' if config.online_mode_check.isChecked() else 'false')
-        self.manager.set_config_value('jvm_args', config.jvm_args_edit.text())
-        self.manager.set_config_value('server_args', config.server_args_edit.text())
-        self.manager.set_config_value('level_seed', config.seed_edit.text())
-        
-        self.manager.save_config()
-        
-        InfoBar.success(
-            title="保存成功",
-            content="配置已保存！",
-            orient=Qt.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=3000,
-            parent=self
-        )
-        
-    def browse_core(self):
-        """浏览服务器核心文件"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "选择服务器核心文件", "", "JAR文件 (*.jar)"
-        )
-        if file_path:
-            self.config_interface.core_edit.setText(os.path.basename(file_path))
-            
-    def start_server(self):
-        """启动服务器"""
-        core_file = self.config_interface.core_edit.text()
-        if not os.path.exists(core_file):
-            InfoBar.error(
-                title="错误",
-                content=f"服务器核心文件 '{core_file}' 不存在!",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            return
-            
-        # 保存当前配置
-        self.save_config()
-        
-        # 启动服务器线程
-        self.server_thread = ServerThread(self.manager)
-        self.server_thread.output_signal.connect(self.append_console_output)
-        self.server_thread.finished_signal.connect(self.server_finished)
-        self.server_thread.start()
-        
-        # 更新UI状态
-        self.server_interface.start_button.setEnabled(False)
-        self.server_interface.stop_button.setEnabled(True)
-        self.server_interface.status_label.setText("运行中")
-        self.server_interface.status_label.setStyleSheet("color: green;")
-        self.console_interface.send_command_button.setEnabled(True)
-        
-        # 切换到控制台界面
-        self.stackedWidget.setCurrentWidget(self.console_interface)
-        
-    def stop_server(self):
-        """停止服务器"""
-        if self.server_thread:
-            self.server_thread.stop_server()
-            
-    def server_finished(self):
-        """服务器结束"""
-        self.server_interface.start_button.setEnabled(True)
-        self.server_interface.stop_button.setEnabled(False)
-        self.server_interface.status_label.setText("未运行")
-        self.server_interface.status_label.setStyleSheet("color: red;")
-        self.console_interface.send_command_button.setEnabled(False)
-        self.append_console_output("=== 服务器已停止 ===")
-        
-    def append_console_output(self, text):
-        """添加控制台输出"""
-        self.console_interface.console_output.append(text)
-        # 自动滚动到底部
-        scrollbar = self.console_interface.console_output.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
 
 def main():
     """主函数"""
+    # 启用高DPI支持
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+    
     app = QApplication(sys.argv)
     app.setApplicationName("MC Server Manager")
     
-    # 设置应用样式
-    app.setStyle('Fusion')
-    
-    window = MainWindow()
-    window.show()
-    
-    sys.exit(app.exec_())
+    try:
+        window = MainWindow()
+        window.show()
+        sys.exit(app.exec_())
+    except Exception as e:
+        print(f"GUI启动失败: {e}")
+        print("尝试启动命令行版本...")
+        from mc_server_manager import main as cli_main
+        cli_main()
 
 if __name__ == "__main__":
     main()
