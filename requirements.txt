@@ -1,8 +1,8 @@
-# Requirements
+# Minecraft Server Manager Requirements
 
-PyQt-Fluent-Widgets>=1.1.0
+# GUI Framework
 PyQt5>=5.15.0
-PyQt5-Qt5>=5.15.0
+PyQt-Fluent-Widgets>=1.1.0
 
-# For better Windows integration
-pywin32>=227
+# For better Windows integration (optional)
+pywin32>=227; sys_platform == "win32"

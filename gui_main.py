@@ -1,84 +1,53 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Minecraft Server Manager
+Minecraft Server Manager - GUI界面
 """
 
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QMessageBox, QFileDialog
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QIcon, QFont
+import threading
+import time
+from typing import Optional
 
-from qfluentwidgets import (FluentWindow, NavigationItemPosition, FluentIcon,
-                           PushButton, LineEdit, SpinBox, CheckBox, TextEdit,
-                           ComboBox, InfoBar, InfoBarPosition, MessageBox,
-                           CardWidget, HeaderCardWidget, SimpleCardWidget,
-                           StrongBodyLabel, BodyLabel, CaptionLabel)
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFileDialog
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt5.QtGui import QFont
 
+from qfluentwidgets import (
+    FluentWindow, NavigationItemPosition, FluentIcon,
+    PushButton, LineEdit, SpinBox, CheckBox, TextEdit,
+    ComboBox, InfoBar, InfoBarPosition,
+    HeaderCardWidget, SimpleCardWidget,
+    StrongBodyLabel, BodyLabel, setTheme, Theme
+)
 
 from mc_server_manager import MinecraftServerManager
-import subprocess
-import threading
 
-class ServerThread(QThread):
-    """服务器运行线程"""
-    output_signal = pyqtSignal(str)
-    finished_signal = pyqtSignal()
+
+class ServerOutputThread(QThread):
+    """服务器输出监控线程"""
+    output_received = pyqtSignal(str)
     
-    def __init__(self, manager):
+    def __init__(self, manager: MinecraftServerManager):
         super().__init__()
         self.manager = manager
-        self.process = None
-        
-    def run(self):
-        """运行服务器"""
-        memory = self.manager.get_config_value('memory')
-        core = self.manager.get_config_value('core')
-        jvm_args = self.manager.get_config_value('jvm_args')
-        server_args = self.manager.get_config_value('server_args')
-        
-        # 检查核心文件
-        if not os.path.exists(core):
-            self.output_signal.emit(f"错误: 服务器核心文件 '{core}' 不存在!")
-            self.finished_signal.emit()
-            return
-        
-        # 创建server.properties
-        self.manager.create_properties()
-        
-        # 构建命令
-        cmd = ['java', f'-Xms{memory}', f'-Xmx{memory}']
-        if jvm_args:
-            cmd.extend(jvm_args.split())
-        cmd.extend(['-jar', core])
-        if server_args:
-            cmd.extend(server_args.split())
-        
-        try:
-            self.output_signal.emit(f"启动命令: {' '.join(cmd)}")
-            self.process = subprocess.Popen(
-                cmd, 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT,
-                universal_newlines=True,
-                bufsize=1
-            )
-            
-            # 读取输出
-            for line in iter(self.process.stdout.readline, ''):
-                if line:
-                    self.output_signal.emit(line.strip())
-                    
-        except Exception as e:
-            self.output_signal.emit(f"启动失败: {e}")
-        finally:
-            self.finished_signal.emit()
+        self.running = False
     
-    def stop_server(self):
-        """停止服务器"""
-        if self.process:
-            self.process.terminate()
+    def run(self):
+        """监控服务器输出"""
+        self.running = True
+        while self.running and self.manager.is_server_running():
+            output = self.manager.read_server_output()
+            if output:
+                self.output_received.emit(output.strip())
+            else:
+                time.sleep(0.1)
+    
+    def stop(self):
+        """停止监控"""
+        self.running = False
+
 
 class MainWindow(FluentWindow):
     """主窗口"""
@@ -86,30 +55,49 @@ class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
         self.manager = MinecraftServerManager()
-        self.server_thread = None
+        self.output_thread: Optional[ServerOutputThread] = None
+        self.status_timer = QTimer()
+        self.status_timer.timeout.connect(self.update_server_status)
+        self.status_timer.start(1000)  # 每秒更新一次状态
+        
         self.init_ui()
         self.load_config()
-        
+    
     def init_ui(self):
-        """初始化UI"""
+        """初始化用户界面"""
         self.setWindowTitle("Minecraft Server Manager")
-        self.resize(900, 700)
+        self.resize(1000, 700)
         
-        # 创建导航界面
+        # 创建界面
         self.server_interface = ServerInterface(self)
         self.config_interface = ConfigInterface(self)
         self.console_interface = ConsoleInterface(self)
         
-        # 添加导航项
-        self.addSubInterface(self.server_interface, FluentIcon.PLAY, "服务器控制")
-        self.addSubInterface(self.config_interface, FluentIcon.SETTING, "服务器配置") 
-        self.addSubInterface(self.console_interface, FluentIcon.COMMAND_PROMPT, "控制台")
+        # 添加到导航
+        self.addSubInterface(
+            self.server_interface, 
+            FluentIcon.PLAY, 
+            "服务器控制",
+            NavigationItemPosition.TOP
+        )
+        self.addSubInterface(
+            self.config_interface, 
+            FluentIcon.SETTING, 
+            "服务器配置",
+            NavigationItemPosition.TOP
+        )
+        self.addSubInterface(
+            self.console_interface, 
+            FluentIcon.COMMAND_PROMPT, 
+            "控制台",
+            NavigationItemPosition.TOP
+        )
         
         # 设置默认界面
         self.stackedWidget.setCurrentWidget(self.server_interface)
-        
+    
     def load_config(self):
-        """加载配置到UI"""
+        """加载配置到界面"""
         config = self.config_interface
         config.memory_edit.setText(self.manager.get_config_value('memory'))
         config.core_edit.setText(self.manager.get_config_value('core'))
@@ -122,6 +110,15 @@ class MainWindow(FluentWindow):
         config.server_args_edit.setText(self.manager.get_config_value('server_args'))
         config.seed_edit.setText(self.manager.get_config_value('level_seed'))
         
+        # 设置下拉框
+        difficulty = self.manager.get_config_value('difficulty')
+        config.difficulty_combo.setCurrentText(difficulty.title())
+        
+        gamemode = self.manager.get_config_value('gamemode')
+        config.gamemode_combo.setCurrentText(gamemode.title())
+        
+        config.pvp_check.setChecked(self.manager.get_config_value('pvp').lower() == 'true')
+    
     def save_config(self):
         """保存配置"""
         config = self.config_interface
@@ -135,6 +132,9 @@ class MainWindow(FluentWindow):
         self.manager.set_config_value('jvm_args', config.jvm_args_edit.text())
         self.manager.set_config_value('server_args', config.server_args_edit.text())
         self.manager.set_config_value('level_seed', config.seed_edit.text())
+        self.manager.set_config_value('difficulty', config.difficulty_combo.currentText().lower())
+        self.manager.set_config_value('gamemode', config.gamemode_combo.currentText().lower())
+        self.manager.set_config_value('pvp', 'true' if config.pvp_check.isChecked() else 'false')
         
         self.manager.save_config()
         
@@ -147,22 +147,26 @@ class MainWindow(FluentWindow):
             duration=3000,
             parent=self
         )
-        
-    def browse_core(self):
+    
+    def browse_core_file(self):
         """浏览服务器核心文件"""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "选择服务器核心文件", "", "JAR文件 (*.jar)"
+            self, 
+            "选择服务器核心文件", 
+            "", 
+            "JAR文件 (*.jar);;所有文件 (*)"
         )
         if file_path:
             self.config_interface.core_edit.setText(os.path.basename(file_path))
-            
+    
     def start_server(self):
         """启动服务器"""
+        # 检查核心文件
         core_file = self.config_interface.core_edit.text()
         if not os.path.exists(core_file):
             InfoBar.error(
                 title="错误",
-                content=f"服务器核心文件 '{core_file}' 不存在!",
+                content=f"服务器核心文件 '{core_file}' 不存在！",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -170,73 +174,127 @@ class MainWindow(FluentWindow):
                 parent=self
             )
             return
-            
-        # 保存当前配置
+        
+        # 保存配置
         self.save_config()
         
-        # 启动服务器线程
-        self.server_thread = ServerThread(self.manager)
-        self.server_thread.output_signal.connect(self.append_console_output)
-        self.server_thread.finished_signal.connect(self.server_finished)
-        self.server_thread.start()
-        
-        # 更新UI状态
-        self.server_interface.start_button.setEnabled(False)
-        self.server_interface.stop_button.setEnabled(True)
-        self.server_interface.status_label.setText("运行中")
-        self.server_interface.status_label.setStyleSheet("color: green;")
-        self.console_interface.send_command_button.setEnabled(True)
-        
-        # 切换到控制台界面
-        self.stackedWidget.setCurrentWidget(self.console_interface)
-        
+        try:
+            if self.manager.start_server():
+                # 启动输出监控线程
+                self.output_thread = ServerOutputThread(self.manager)
+                self.output_thread.output_received.connect(self.console_interface.append_output)
+                self.output_thread.start()
+                
+                InfoBar.success(
+                    title="启动成功",
+                    content="服务器正在启动...",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self
+                )
+                
+                # 切换到控制台界面
+                self.stackedWidget.setCurrentWidget(self.console_interface)
+            else:
+                InfoBar.error(
+                    title="启动失败",
+                    content="服务器启动失败！",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
+                    parent=self
+                )
+        except Exception as e:
+            InfoBar.error(
+                title="启动失败",
+                content=f"启动失败: {str(e)}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+    
     def stop_server(self):
         """停止服务器"""
-        if self.server_thread:
-            self.server_thread.stop_server()
-            
-    def server_finished(self):
-        """服务器结束"""
-        self.server_interface.start_button.setEnabled(True)
-        self.server_interface.stop_button.setEnabled(False)
-        self.server_interface.status_label.setText("未运行")
-        self.server_interface.status_label.setStyleSheet("color: red;")
-        self.console_interface.send_command_button.setEnabled(False)
-        self.append_console_output("=== 服务器已停止 ===")
+        if self.output_thread:
+            self.output_thread.stop()
+            self.output_thread.wait()
+            self.output_thread = None
         
-    def append_console_output(self, text):
-        """添加控制台输出"""
-        self.console_interface.console_output.append(text)
-        # 自动滚动到底部
-        scrollbar = self.console_interface.console_output.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
+        if self.manager.stop_server():
+            InfoBar.success(
+                title="停止成功",
+                content="服务器已停止",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self
+            )
+        else:
+            InfoBar.warning(
+                title="停止失败",
+                content="服务器停止失败或未在运行",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self
+            )
+    
+    def send_command(self, command: str):
+        """发送命令到服务器"""
+        if self.manager.send_command(command):
+            self.console_interface.append_output(f"> {command}")
+        else:
+            InfoBar.warning(
+                title="发送失败",
+                content="命令发送失败，服务器可能未运行",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self
+            )
+    
+    def update_server_status(self):
+        """更新服务器状态"""
+        is_running = self.manager.is_server_running()
+        self.server_interface.update_status(is_running)
+        self.console_interface.update_status(is_running)
+
 
 class ServerInterface(QWidget):
     """服务器控制界面"""
     
-    def __init__(self, parent):
+    def __init__(self, parent: MainWindow):
         super().__init__()
         self.parent = parent
         self.init_ui()
-        
+    
     def init_ui(self):
+        """初始化界面"""
         layout = QVBoxLayout(self)
         layout.setSpacing(20)
         layout.setContentsMargins(30, 30, 30, 30)
         
         # 状态卡片
-        self.status_card = HeaderCardWidget(self)
-        self.status_card.setTitle("服务器状态")
+        status_card = HeaderCardWidget(self)
+        status_card.setTitle("服务器状态")
         
         status_layout = QHBoxLayout()
         status_layout.addWidget(BodyLabel("当前状态:"))
         self.status_label = StrongBodyLabel("未运行")
-        self.status_label.setStyleSheet("color: red;")
+        self.status_label.setStyleSheet("color: #d13438;")
         status_layout.addWidget(self.status_label)
         status_layout.addStretch()
         
-        self.status_card.viewLayout.addLayout(status_layout)
-        layout.addWidget(self.status_card)
+        status_card.viewLayout.addLayout(status_layout)
+        layout.addWidget(status_card)
         
         # 控制按钮卡片
         control_card = SimpleCardWidget(self)
@@ -244,12 +302,12 @@ class ServerInterface(QWidget):
         
         self.start_button = PushButton("启动服务器", self)
         self.start_button.setIcon(FluentIcon.PLAY)
+        self.start_button.clicked.connect(self.parent.start_server)
+        
         self.stop_button = PushButton("停止服务器", self)
         self.stop_button.setIcon(FluentIcon.PAUSE)
-        self.stop_button.setEnabled(False)
-        
-        self.start_button.clicked.connect(self.parent.start_server)
         self.stop_button.clicked.connect(self.parent.stop_server)
+        self.stop_button.setEnabled(False)
         
         control_layout.addWidget(self.start_button)
         control_layout.addWidget(self.stop_button)
@@ -257,16 +315,31 @@ class ServerInterface(QWidget):
         
         layout.addWidget(control_card)
         layout.addStretch()
-        
+    
+    def update_status(self, is_running: bool):
+        """更新状态显示"""
+        if is_running:
+            self.status_label.setText("运行中")
+            self.status_label.setStyleSheet("color: #107c10;")
+            self.start_button.setEnabled(False)
+            self.stop_button.setEnabled(True)
+        else:
+            self.status_label.setText("未运行")
+            self.status_label.setStyleSheet("color: #d13438;")
+            self.start_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
+
+
 class ConfigInterface(QWidget):
     """配置界面"""
     
-    def __init__(self, parent):
+    def __init__(self, parent: MainWindow):
         super().__init__()
         self.parent = parent
         self.init_ui()
-        
+    
     def init_ui(self):
+        """初始化界面"""
         layout = QVBoxLayout(self)
         layout.setSpacing(20)
         layout.setContentsMargins(30, 30, 30, 30)
@@ -277,21 +350,22 @@ class ConfigInterface(QWidget):
         
         basic_layout = QGridLayout()
         
-        # 内存配置
+        # 内存分配
         basic_layout.addWidget(BodyLabel("内存分配:"), 0, 0)
         self.memory_edit = LineEdit(self)
-        self.memory_edit.setPlaceholderText("例如: 2G, 4G")
+        self.memory_edit.setPlaceholderText("例如: 2G, 4G, 8G")
         basic_layout.addWidget(self.memory_edit, 0, 1)
         
         # 服务器核心
         basic_layout.addWidget(BodyLabel("服务器核心:"), 1, 0)
         core_layout = QHBoxLayout()
         self.core_edit = LineEdit(self)
-        self.browse_core_button = PushButton("浏览", self)
-        self.browse_core_button.setIcon(FluentIcon.FOLDER)
-        self.browse_core_button.clicked.connect(self.parent.browse_core)
+        self.core_edit.setPlaceholderText("server.jar")
+        self.browse_button = PushButton("浏览", self)
+        self.browse_button.setIcon(FluentIcon.FOLDER)
+        self.browse_button.clicked.connect(self.parent.browse_core_file)
         core_layout.addWidget(self.core_edit)
-        core_layout.addWidget(self.browse_core_button)
+        core_layout.addWidget(self.browse_button)
         basic_layout.addLayout(core_layout, 1, 1)
         
         basic_card.viewLayout.addLayout(basic_layout)
@@ -304,9 +378,9 @@ class ConfigInterface(QWidget):
         server_layout = QGridLayout()
         
         # MOTD
-        server_layout.addWidget(BodyLabel("MOTD描述:"), 0, 0)
+        server_layout.addWidget(BodyLabel("服务器描述(MOTD):"), 0, 0)
         self.motd_edit = LineEdit(self)
-        self.motd_edit.setPlaceholderText("支持中文，如：欢迎来到我的服务器！")
+        self.motd_edit.setPlaceholderText("A Minecraft Server")
         server_layout.addWidget(self.motd_edit, 0, 1)
         
         # 端口
@@ -330,10 +404,29 @@ class ConfigInterface(QWidget):
         self.view_distance_spin.setValue(10)
         server_layout.addWidget(self.view_distance_spin, 3, 1)
         
+        # 难度
+        server_layout.addWidget(BodyLabel("游戏难度:"), 4, 0)
+        self.difficulty_combo = ComboBox(self)
+        self.difficulty_combo.addItems(["Peaceful", "Easy", "Normal", "Hard"])
+        self.difficulty_combo.setCurrentText("Easy")
+        server_layout.addWidget(self.difficulty_combo, 4, 1)
+        
+        # 游戏模式
+        server_layout.addWidget(BodyLabel("游戏模式:"), 5, 0)
+        self.gamemode_combo = ComboBox(self)
+        self.gamemode_combo.addItems(["Survival", "Creative", "Adventure", "Spectator"])
+        self.gamemode_combo.setCurrentText("Survival")
+        server_layout.addWidget(self.gamemode_combo, 5, 1)
+        
         # 正版验证
         self.online_mode_check = CheckBox("启用正版验证", self)
         self.online_mode_check.setChecked(True)
-        server_layout.addWidget(self.online_mode_check, 4, 0, 1, 2)
+        server_layout.addWidget(self.online_mode_check, 6, 0, 1, 2)
+        
+        # PVP
+        self.pvp_check = CheckBox("启用PVP", self)
+        self.pvp_check.setChecked(True)
+        server_layout.addWidget(self.pvp_check, 7, 0, 1, 2)
         
         server_card.viewLayout.addLayout(server_layout)
         layout.addWidget(server_card)
@@ -359,6 +452,7 @@ class ConfigInterface(QWidget):
         # 世界种子
         advanced_layout.addWidget(BodyLabel("世界种子:"), 2, 0)
         self.seed_edit = LineEdit(self)
+        self.seed_edit.setPlaceholderText("留空为随机种子")
         advanced_layout.addWidget(self.seed_edit, 2, 1)
         
         advanced_card.viewLayout.addLayout(advanced_layout)
@@ -371,16 +465,18 @@ class ConfigInterface(QWidget):
         layout.addWidget(save_button)
         
         layout.addStretch()
-        
+
+
 class ConsoleInterface(QWidget):
     """控制台界面"""
     
-    def __init__(self, parent):
+    def __init__(self, parent: MainWindow):
         super().__init__()
         self.parent = parent
         self.init_ui()
-        
+    
     def init_ui(self):
+        """初始化界面"""
         layout = QVBoxLayout(self)
         layout.setSpacing(20)
         layout.setContentsMargins(30, 30, 30, 30)
@@ -394,23 +490,47 @@ class ConsoleInterface(QWidget):
         # 控制台输出
         self.console_output = TextEdit(self)
         self.console_output.setReadOnly(True)
-        self.console_output.setFont(QFont("Consolas", 9))
+        self.console_output.setFont(QFont("Consolas", 10))
+        self.console_output.setStyleSheet("background-color: #1e1e1e; color: #ffffff;")
         console_layout.addWidget(self.console_output)
         
         # 命令输入
         command_layout = QHBoxLayout()
         self.command_input = LineEdit(self)
         self.command_input.setPlaceholderText("输入服务器命令...")
-        self.send_command_button = PushButton("发送", self)
-        self.send_command_button.setIcon(FluentIcon.SEND)
-        self.send_command_button.setEnabled(False)
+        self.command_input.returnPressed.connect(self.send_command)
+        
+        self.send_button = PushButton("发送", self)
+        self.send_button.setIcon(FluentIcon.SEND)
+        self.send_button.clicked.connect(self.send_command)
+        self.send_button.setEnabled(False)
         
         command_layout.addWidget(self.command_input)
-        command_layout.addWidget(self.send_command_button)
+        command_layout.addWidget(self.send_button)
         console_layout.addLayout(command_layout)
         
         console_card.viewLayout.addLayout(console_layout)
         layout.addWidget(console_card)
+    
+    def send_command(self):
+        """发送命令"""
+        command = self.command_input.text().strip()
+        if command:
+            self.parent.send_command(command)
+            self.command_input.clear()
+    
+    def append_output(self, text: str):
+        """添加输出文本"""
+        self.console_output.append(text)
+        # 自动滚动到底部
+        scrollbar = self.console_output.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+    
+    def update_status(self, is_running: bool):
+        """更新状态"""
+        self.send_button.setEnabled(is_running)
+        self.command_input.setEnabled(is_running)
+
 
 def main():
     """主函数"""
@@ -420,18 +540,17 @@ def main():
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
     
     app = QApplication(sys.argv)
-    app.setApplicationName("MC Server Manager")
+    app.setApplicationName("Minecraft Server Manager")
     
-    try:
-        window = MainWindow()
-        window.show()
-        sys.exit(app.exec_())
-    except Exception as e:
-        print(f"GUI启动失败: {e}")
-        import traceback
-        traceback.print_exc()
-        input("按回车键退出...")
-        raise e
+    # 设置主题
+    setTheme(Theme.AUTO)
+    
+    # 创建主窗口
+    window = MainWindow()
+    window.show()
+    
+    sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     main()
