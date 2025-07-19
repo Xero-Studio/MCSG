@@ -70,8 +70,13 @@ class MainWindow(FluentWindow):
         
         # 创建界面
         self.server_interface = ServerInterface(self)
+        self.server_interface.setObjectName("ServerInterface")
+        
         self.config_interface = ConfigInterface(self)
+        self.config_interface.setObjectName("ConfigInterface")
+        
         self.console_interface = ConsoleInterface(self)
+        self.console_interface.setObjectName("ConsoleInterface")
         
         # 添加到导航
         self.addSubInterface(
