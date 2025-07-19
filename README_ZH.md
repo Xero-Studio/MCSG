@@ -22,4 +22,4 @@
 
 # 作者B站
 
-[点我！](https://space.bilibili.com/3546703915387263)；；；
+[点我！](https://space.bilibili.com/3546703915387263)
