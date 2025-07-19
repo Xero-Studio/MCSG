@@ -1,0 +1,8 @@
+# Minecraft Server Manager Requirements
+# This project uses only Python standard library modules
+# No external dependencies required
+
+# Python >= 3.6 is required for:
+# - f-string formatting
+# - pathlib module
+# - configparser improvements

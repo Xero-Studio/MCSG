@@ -4,28 +4,45 @@ English | [简体中文](README_ZH.md)
 # MC Server Manager
 
 
-Supported by the powerful (?) Bat format
+Now powered by Python! (Original batch version moved to `old/` folder)
 
 
 # 🌟 Features
 
 
 - Compact and lightweight
+- Cross-platform support (Windows, Linux, macOS)
 - Convenient for common configuration changes
+- User-friendly configuration interface
+- Automatic EULA handling
 - And more...
 
 
 # 📦 Quick Start
 
 
-Download start.bat (Do not download any files starting with Version, as these older versions have many bugs, and I am not responsible for any issues that arise.) Run it, and generally speaking, you can use it with just one core. Due to the technical difficulty, I will not consider adding the function to download cores within the program.
+**Requirements:**
+- Python 3.6 or higher
+- Java (for running Minecraft server)
+
+**Installation:**
+1. Download or clone this repository
+2. Make sure you have a Minecraft server jar file (e.g., `server.jar`) in the same directory
+3. Run the program:
+   - **Windows**: Double-click `start.bat` or run `python start.py`
+   - **Linux/macOS**: Run `./start.sh` or `python3 start.py`
+
+The program will automatically create configuration files and handle EULA agreement. You just need to have a server core file to get started.
 
 
 # Wish List
 
 
-- [ ] Multilingual
-- [x] Pack into exe
+- [ ] Multilingual support
+- [x] Cross-platform Python version
+- [ ] GUI interface
+- [ ] Plugin management
+- [ ] Backup functionality
 - [ ] More...
 
 
