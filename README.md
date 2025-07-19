@@ -65,15 +65,15 @@ This project includes automated builds via GitHub Actions. **Pre-built executabl
 # 🎯 Wish List
 
 ## 🔥 High Priority
-- [ ] **Plugin management** - Automatic plugin download and management
-- [ ] **Performance monitoring** - Real-time CPU, memory, TPS monitoring
-- [ ] **Player management** - Online player list, kick/ban functionality
+- [ ] **Advanced logging** - Smart server log analysis and problem diagnosis
+- [ ] **Remote management** - Web-based remote server management
+- [ ] **Automated tasks** - Scheduled server maintenance and optimization
 
 ## 🌟 Medium Priority
-- [ ] **Performance monitoring** - Real-time CPU, memory, TPS monitoring
-- [ ] **Player management** - Online player list, kick/ban functionality
-- [ ] **Log analysis** - Smart server log analysis and problem diagnosis
-- [ ] **Remote management** - Web-based remote server management
+- [ ] **World management** - World backup, restore, and generation tools
+- [ ] **Economy system** - Built-in economy management
+- [ ] **Event scheduling** - Automated server events and announcements
+- [ ] **API integration** - REST API for external integrations
 
 ## 💡 Low Priority
 - [ ] **Theme switching** - Multiple interface themes
@@ -88,6 +88,11 @@ This project includes automated builds via GitHub Actions. **Pre-built executabl
 - [x] **Multi-server management** - Manage multiple Minecraft server instances simultaneously
 - [x] **Server templates** - Pre-configured templates for different server types
 - [x] **Backup system** - Scheduled world and configuration backups
+- [x] **Plugin management** - Automatic plugin download and management
+- [x] **Performance monitoring** - Real-time CPU, memory, TPS monitoring
+- [x] **Player management** - Online player list, kick/ban functionality
+- [x] **Smart server controls** - Double-click force stop, EULA auto-handling
+- [x] **Advanced configuration** - Memory slider, path selection, core file browser
 
 
 # Author on Bilibili
