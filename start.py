@@ -52,13 +52,9 @@ def main():
         
     except Exception as e:
         print(f"GUI启动失败: {e}")
-        print("启动命令行版本...")
-        try:
-            from mc_server_manager import main as cli_main
-            cli_main()
-        except Exception as cli_e:
-            print(f"命令行版本也启动失败: {cli_e}")
-            input("按回车键退出...")
+        import traceback
+        traceback.print_exc()
+        input("按回车键查看详细错误信息...")
 
 
 if __name__ == "__main__":
