@@ -5,10 +5,10 @@
         "directory": "servers\\5205b386-2040-4edb-8c3b-6d1665c83623",
         "config": {
             "memory": "4G",
-            "core": "server.jar",
+            "core": "fabric-server-mc.1.21.1-loader.0.16.14-launcher.1.0.3.jar",
             "motd": "原版生存服务器 - 欢迎来玩！",
             "port": "25565",
-            "max_players": "20",
+            "max_players": "16",
             "view_distance": "10",
             "online_mode": "true",
             "difficulty": "normal",

@@ -1,9 +1,9 @@
 {
     "memory": "4G",
-    "core": "server.jar",
+    "core": "fabric-server-mc.1.21.1-loader.0.16.14-launcher.1.0.3.jar",
     "motd": "原版生存服务器 - 欢迎来玩！",
     "port": "25565",
-    "max_players": "20",
+    "max_players": "16",
     "view_distance": "10",
     "online_mode": "true",
     "jvm_args": "-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions",

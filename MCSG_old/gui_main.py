@@ -10,7 +10,10 @@ import threading
 import time
 from typing import Optional
 
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFileDialog
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
+    QGridLayout, QFileDialog, QStackedWidget
+)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont
 
@@ -18,8 +21,8 @@ from qfluentwidgets import (
     FluentWindow, NavigationItemPosition, FluentIcon,
     PushButton, LineEdit, SpinBox, CheckBox, TextEdit,
     ComboBox, InfoBar, InfoBarPosition,
-    HeaderCardWidget, SimpleCardWidget,
-    StrongBodyLabel, BodyLabel, setTheme, Theme
+    HeaderCardWidget, SimpleCardWidget, Slider,
+    StrongBodyLabel, BodyLabel, setTheme, Theme, MessageBox
 )
 
 from mc_server_manager import MinecraftServerManager
@@ -412,12 +415,11 @@ class MainWindow(FluentWindow):
             except Exception as e:
                 print(f"异步强制停止失败: {e}")
         
-        import threading
         threading.Thread(target=force_stop_async, daemon=True).start()
     
     def send_command(self, command: str):
         """发送命令到服务器"""
-        if self.manager.send_command(command):
+        if self.manager and self.manager.send_command(command):
             self.console_interface.append_output(f"> {command}")
         else:
             InfoBar.warning(
@@ -454,8 +456,6 @@ class MainWindow(FluentWindow):
                 pass
         
         # 需要用户同意EULA
-        from qfluentwidgets import MessageBox
-        
         dialog = MessageBox(
             "Minecraft EULA 协议",
             "启动服务器需要同意 Minecraft 最终用户许可协议 (EULA)。\n\n"
@@ -696,8 +696,6 @@ class ServerListInterface(QWidget):
     
     def delete_server(self, server_id: str):
         """删除服务器"""
-        from qfluentwidgets import MessageBox
-        
         server = self.parent.multi_server_manager.get_server(server_id)
         if not server:
             return
@@ -821,8 +819,6 @@ class BackupInterface(QWidget):
     
     def restore_backup(self, backup_id: str):
         """恢复备份"""
-        from qfluentwidgets import MessageBox
-        
         backup = self.parent.backup_manager.get_backup_by_id(backup_id)
         if not backup:
             return
@@ -858,8 +854,6 @@ class BackupInterface(QWidget):
     
     def delete_backup(self, backup_id: str):
         """删除备份"""
-        from qfluentwidgets import MessageBox
-        
         backup = self.parent.backup_manager.get_backup_by_id(backup_id)
         if not backup:
             return
@@ -970,13 +964,7 @@ class ConfigInterface(QWidget):
         basic_layout.addWidget(BodyLabel("内存分配:"), 0, 0)
         memory_layout = QVBoxLayout()
         
-        try:
-            from qfluentwidgets import Slider
-            self.memory_slider = Slider(Qt.Horizontal, self)
-        except ImportError:
-            # 如果qfluentwidgets中没有Slider，使用PyQt5的
-            from PyQt5.QtWidgets import QSlider
-            self.memory_slider = QSlider(Qt.Horizontal, self)
+        self.memory_slider = Slider(Qt.Horizontal, self)
         self.memory_slider.setRange(512, 16384)  # 512MB to 16GB
         self.memory_slider.setValue(2048)  # 默认2GB
         self.memory_slider.valueChanged.connect(self.update_memory_label)
@@ -1253,195 +1241,6 @@ class ConsoleInterface(QWidget):
                 self.last_stop_click_time = current_time
 
 
-class CreateServerDialog(QWidget):
-    """创建服务器对话框"""
-    
-    def __init__(self, parent):
-        super().__init__()
-        self.parent = parent
-        self.result = False
-        self.setWindowTitle("创建新服务器")
-        self.setFixedSize(500, 400)
-        self.setWindowModality(Qt.ApplicationModal)
-        
-        self.init_ui()
-        
-        # 居中显示
-        if parent:
-            self.move(parent.geometry().center() - self.rect().center())
-    
-    def init_ui(self):
-        """初始化界面"""
-        layout = QVBoxLayout(self)
-        layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
-        
-        # 标题
-        title_label = StrongBodyLabel("创建新服务器")
-        title_label.setStyleSheet("font-size: 18px;")
-        layout.addWidget(title_label)
-        
-        # 表单
-        form_layout = QGridLayout()
-        
-        # 服务器名称
-        form_layout.addWidget(BodyLabel("服务器名称:"), 0, 0)
-        self.name_edit = LineEdit(self)
-        self.name_edit.setPlaceholderText("输入服务器名称")
-        form_layout.addWidget(self.name_edit, 0, 1)
-        
-        # 服务器模板
-        form_layout.addWidget(BodyLabel("服务器模板:"), 1, 0)
-        self.template_combo = ComboBox(self)
-        template_names = self.parent.template_manager.get_template_names()
-        self.template_combo.addItems(template_names)
-        form_layout.addWidget(self.template_combo, 1, 1)
-        
-        # 服务器路径
-        form_layout.addWidget(BodyLabel("服务器路径:"), 2, 0)
-        path_layout = QHBoxLayout()
-        self.path_edit = LineEdit(self)
-        self.path_edit.setPlaceholderText("服务器路径(基于当前根目录): /Servers")
-        self.path_edit.setText("Servers")
-        
-        self.browse_path_button = PushButton("浏览", self)
-        self.browse_path_button.setIcon(FluentIcon.FOLDER)
-        self.browse_path_button.clicked.connect(self.browse_path)
-        
-        path_layout.addWidget(self.path_edit)
-        path_layout.addWidget(self.browse_path_button)
-        form_layout.addLayout(path_layout, 2, 1)
-        
-        # 服务器核心文件
-        form_layout.addWidget(BodyLabel("服务器核心:"), 3, 0)
-        core_layout = QHBoxLayout()
-        self.core_edit = LineEdit(self)
-        self.core_edit.setPlaceholderText("选择服务器核心文件 (server.jar)")
-        
-        self.browse_core_button = PushButton("浏览", self)
-        self.browse_core_button.setIcon(FluentIcon.DOCUMENT)
-        self.browse_core_button.clicked.connect(self.browse_core)
-        
-        core_layout.addWidget(self.core_edit)
-        core_layout.addWidget(self.browse_core_button)
-        form_layout.addLayout(core_layout, 3, 1)
-        
-        layout.addLayout(form_layout)
-        
-        # 提示信息
-        tip_label = BodyLabel("提示: 如果没有服务器核心文件，请先下载对应版本的 server.jar 文件")
-        tip_label.setStyleSheet("color: #888888;")
-        layout.addWidget(tip_label)
-        
-        layout.addStretch()
-        
-        # 按钮
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        
-        self.cancel_button = PushButton("取消", self)
-        self.cancel_button.clicked.connect(self.reject)
-        
-        self.create_button = PushButton("创建", self)
-        self.create_button.setIcon(FluentIcon.ADD)
-        self.create_button.clicked.connect(self.accept)
-        
-        button_layout.addWidget(self.cancel_button)
-        button_layout.addWidget(self.create_button)
-        
-        layout.addLayout(button_layout)
-    
-    def browse_path(self):
-        """浏览服务器路径"""
-        path = QFileDialog.getExistingDirectory(self, "选择服务器目录", ".")
-        if path:
-            # 转换为相对路径
-            rel_path = os.path.relpath(path, ".")
-            self.path_edit.setText(rel_path)
-    
-    def browse_core(self):
-        """浏览服务器核心文件"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, 
-            "选择服务器核心文件", 
-            "", 
-            "JAR文件 (*.jar);;所有文件 (*)"
-        )
-        if file_path:
-            self.core_edit.setText(file_path)
-    
-    def get_server_info(self):
-        """获取服务器信息"""
-        name = self.name_edit.text().strip()
-        if not name:
-            InfoBar.warning(
-                title="警告",
-                content="请输入服务器名称",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=3000,
-                parent=self.parent
-            )
-            return None
-        
-        core_file = self.core_edit.text().strip()
-        if not core_file:
-            InfoBar.warning(
-                title="警告", 
-                content="请选择服务器核心文件",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=3000,
-                parent=self.parent
-            )
-            return None
-        
-        if not os.path.exists(core_file):
-            InfoBar.error(
-                title="错误",
-                content="服务器核心文件不存在",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=3000,
-                parent=self.parent
-            )
-            return None
-        
-        return {
-            'name': name,
-            'template': self.template_combo.currentText(),
-            'directory': self.path_edit.text().strip() or "Servers",
-            'core_file': core_file
-        }
-    
-    def exec(self):
-        """显示对话框"""
-        self.show()
-        # 简单的事件循环
-        from PyQt5.QtCore import QEventLoop
-        loop = QEventLoop()
-        self.finished = loop.quit
-        loop.exec_()
-        return self.result
-    
-    def accept(self):
-        """接受"""
-        self.result = True
-        self.close()
-        if hasattr(self, 'finished'):
-            self.finished()
-    
-    def reject(self):
-        """拒绝"""
-        self.result = False
-        self.close()
-        if hasattr(self, 'finished'):
-            self.finished()
-
-
 class PluginInterface(QWidget):
     """插件管理界面"""
     
@@ -1498,7 +1297,6 @@ class PluginInterface(QWidget):
         layout.addLayout(tab_button_layout)
         
         # 创建堆叠widget来模拟选项卡
-        from PyQt5.QtWidgets import QStackedWidget
         self.stacked_widget = QStackedWidget(self)
         
         # 已安装插件页面
@@ -1763,8 +1561,6 @@ class PluginInterface(QWidget):
     
     def uninstall_plugin(self, plugin_name: str):
         """卸载插件"""
-        from qfluentwidgets import MessageBox
-        
         dialog = MessageBox(
             "确认卸载",
             f"确定要卸载插件 '{plugin_name}' 吗？",
@@ -1811,7 +1607,6 @@ class PluginInterface(QWidget):
                 parent=self.parent
             )
             self.refresh_plugin_list()
-    
     def search_plugins(self):
         """搜索插件"""
         keyword = self.search_edit.text().strip()
@@ -1836,6 +1631,8 @@ class PluginInterface(QWidget):
             no_results_label = BodyLabel(f"未找到包含 '{keyword}' 的插件")
             no_results_label.setAlignment(Qt.AlignCenter)
             self.available_list_layout.addWidget(no_results_label)
+
+
 
 
 class PerformanceInterface(QWidget):
@@ -2188,6 +1985,195 @@ class PlayerInterface(QWidget):
                 parent=self.parent
             )
             self.refresh_player_list()
+
+
+class CreateServerDialog(QWidget):
+    """创建服务器对话框"""
+    
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+        self.result = False
+        self.setWindowTitle("创建新服务器")
+        self.setFixedSize(500, 400)
+        self.setWindowModality(Qt.ApplicationModal)
+        
+        self.init_ui()
+        
+        # 居中显示
+        if parent:
+            self.move(parent.geometry().center() - self.rect().center())
+    
+    def init_ui(self):
+        """初始化界面"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # 标题
+        title_label = StrongBodyLabel("创建新服务器")
+        title_label.setStyleSheet("font-size: 18px;")
+        layout.addWidget(title_label)
+        
+        # 表单
+        form_layout = QGridLayout()
+        
+        # 服务器名称
+        form_layout.addWidget(BodyLabel("服务器名称:"), 0, 0)
+        self.name_edit = LineEdit(self)
+        self.name_edit.setPlaceholderText("输入服务器名称")
+        form_layout.addWidget(self.name_edit, 0, 1)
+        
+        # 服务器模板
+        form_layout.addWidget(BodyLabel("服务器模板:"), 1, 0)
+        self.template_combo = ComboBox(self)
+        template_names = self.parent.template_manager.get_template_names()
+        self.template_combo.addItems(template_names)
+        form_layout.addWidget(self.template_combo, 1, 1)
+        
+        # 服务器路径
+        form_layout.addWidget(BodyLabel("服务器路径:"), 2, 0)
+        path_layout = QHBoxLayout()
+        self.path_edit = LineEdit(self)
+        self.path_edit.setPlaceholderText("服务器路径(基于当前根目录): /Servers")
+        self.path_edit.setText("Servers")
+        
+        self.browse_path_button = PushButton("浏览", self)
+        self.browse_path_button.setIcon(FluentIcon.FOLDER)
+        self.browse_path_button.clicked.connect(self.browse_path)
+        
+        path_layout.addWidget(self.path_edit)
+        path_layout.addWidget(self.browse_path_button)
+        form_layout.addLayout(path_layout, 2, 1)
+        
+        # 服务器核心文件
+        form_layout.addWidget(BodyLabel("服务器核心:"), 3, 0)
+        core_layout = QHBoxLayout()
+        self.core_edit = LineEdit(self)
+        self.core_edit.setPlaceholderText("选择服务器核心文件 (server.jar)")
+        
+        self.browse_core_button = PushButton("浏览", self)
+        self.browse_core_button.setIcon(FluentIcon.DOCUMENT)
+        self.browse_core_button.clicked.connect(self.browse_core)
+        
+        core_layout.addWidget(self.core_edit)
+        core_layout.addWidget(self.browse_core_button)
+        form_layout.addLayout(core_layout, 3, 1)
+        
+        layout.addLayout(form_layout)
+        
+        # 提示信息
+        tip_label = BodyLabel("提示: 如果没有服务器核心文件，请先下载对应版本的 server.jar 文件")
+        tip_label.setStyleSheet("color: #888888;")
+        layout.addWidget(tip_label)
+        
+        layout.addStretch()
+        
+        # 按钮
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        self.cancel_button = PushButton("取消", self)
+        self.cancel_button.clicked.connect(self.reject)
+        
+        self.create_button = PushButton("创建", self)
+        self.create_button.setIcon(FluentIcon.ADD)
+        self.create_button.clicked.connect(self.accept)
+        
+        button_layout.addWidget(self.cancel_button)
+        button_layout.addWidget(self.create_button)
+        
+        layout.addLayout(button_layout)
+    
+    def browse_path(self):
+        """浏览服务器路径"""
+        path = QFileDialog.getExistingDirectory(self, "选择服务器目录", ".")
+        if path:
+            # 转换为相对路径
+            rel_path = os.path.relpath(path, ".")
+            self.path_edit.setText(rel_path)
+    
+    def browse_core(self):
+        """浏览服务器核心文件"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, 
+            "选择服务器核心文件", 
+            "", 
+            "JAR文件 (*.jar);;所有文件 (*)"
+        )
+        if file_path:
+            self.core_edit.setText(file_path)
+    
+    def get_server_info(self):
+        """获取服务器信息"""
+        name = self.name_edit.text().strip()
+        if not name:
+            InfoBar.warning(
+                title="警告",
+                content="请输入服务器名称",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+            return None
+        
+        core_file = self.core_edit.text().strip()
+        if not core_file:
+            InfoBar.warning(
+                title="警告", 
+                content="请选择服务器核心文件",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+            return None
+        
+        if not os.path.exists(core_file):
+            InfoBar.error(
+                title="错误",
+                content="服务器核心文件不存在",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.parent
+            )
+            return None
+        
+        return {
+            'name': name,
+            'template': self.template_combo.currentText(),
+            'directory': self.path_edit.text().strip() or "Servers",
+            'core_file': core_file
+        }
+    
+    def exec(self):
+        """显示对话框"""
+        self.show()
+        # 简单的事件循环
+        from PyQt5.QtCore import QEventLoop
+        loop = QEventLoop()
+        self.finished = loop.quit
+        loop.exec_()
+        return self.result
+    
+    def accept(self):
+        """接受"""
+        self.result = True
+        self.close()
+        if hasattr(self, 'finished'):
+            self.finished()
+    
+    def reject(self):
+        """拒绝"""
+        self.result = False
+        self.close()
+        if hasattr(self, 'finished'):
+            self.finished()
 
 
 def main():
