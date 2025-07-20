@@ -2,7 +2,7 @@
 
 
 # 重要！
-- 因为PyQt太难了，此项目已停用，现由[TedZyzsdy](https://github.com/TedZyzsdt)维护
+因为PyQt太难了，此项目已停用，现由[TedZyzsdy](https://github.com/TedZyzsdt)维护
 
 
 # MC Server Manager
