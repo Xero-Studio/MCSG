@@ -1,6 +1,10 @@
 English | [简体中文](README_ZH.md)
 
 
+# Important!
+This project has been deprecated due to the difficulty of PyQt, and it is now maintained by [TedZyzsdy](https://github.com/TedZyzsdt).
+
+
 # MC Server Manager
 
 
