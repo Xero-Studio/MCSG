@@ -1,0 +1,23 @@
+[
+    {
+        "server_id": "5205b386-2040-4edb-8c3b-6d1665c83623",
+        "name": "默认服务器",
+        "directory": "servers\\5205b386-2040-4edb-8c3b-6d1665c83623",
+        "config": {
+            "memory": "4G",
+            "core": "server.jar",
+            "motd": "原版生存服务器 - 欢迎来玩！",
+            "port": "25565",
+            "max_players": "20",
+            "view_distance": "10",
+            "online_mode": "true",
+            "difficulty": "normal",
+            "gamemode": "survival",
+            "pvp": "true",
+            "spawn_protection": "16",
+            "jvm_args": "-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions",
+            "server_args": "nogui",
+            "level_seed": ""
+        }
+    }
+]

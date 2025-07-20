@@ -1,0 +1,82 @@
+[
+    {
+        "name": "原版生存服务器",
+        "description": "标准的原版 Minecraft 生存服务器",
+        "config": {
+            "memory": "4G",
+            "core": "server.jar",
+            "motd": "原版生存服务器 - 欢迎来玩！",
+            "port": "25565",
+            "max_players": "20",
+            "view_distance": "10",
+            "online_mode": "true",
+            "difficulty": "normal",
+            "gamemode": "survival",
+            "pvp": "true",
+            "spawn_protection": "16",
+            "jvm_args": "-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions",
+            "server_args": "nogui",
+            "level_seed": ""
+        }
+    },
+    {
+        "name": "创造服务器",
+        "description": "创造模式服务器，适合建筑和创作",
+        "config": {
+            "memory": "2G",
+            "core": "server.jar",
+            "motd": "创造服务器 - 自由建造！",
+            "port": "25566",
+            "max_players": "10",
+            "view_distance": "12",
+            "online_mode": "true",
+            "difficulty": "peaceful",
+            "gamemode": "creative",
+            "pvp": "false",
+            "spawn_protection": "0",
+            "jvm_args": "-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions",
+            "server_args": "nogui",
+            "level_seed": ""
+        }
+    },
+    {
+        "name": "模组服务器",
+        "description": "高性能模组服务器配置",
+        "config": {
+            "memory": "8G",
+            "core": "forge-server.jar",
+            "motd": "模组服务器 - 更多内容等你探索！",
+            "port": "25567",
+            "max_players": "15",
+            "view_distance": "8",
+            "online_mode": "true",
+            "difficulty": "normal",
+            "gamemode": "survival",
+            "pvp": "true",
+            "spawn_protection": "16",
+            "jvm_args": "-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:G1HeapRegionSize=32m",
+            "server_args": "nogui",
+            "level_seed": ""
+        }
+    },
+    {
+        "name": "小型私人服务器",
+        "description": "适合朋友间游玩的小型服务器",
+        "config": {
+            "memory": "1G",
+            "core": "server.jar",
+            "motd": "私人小服 - 仅限好友",
+            "port": "25568",
+            "max_players": "5",
+            "view_distance": "6",
+            "online_mode": "false",
+            "difficulty": "easy",
+            "gamemode": "survival",
+            "pvp": "false",
+            "spawn_protection": "10",
+            "jvm_args": "-XX:+UseG1GC",
+            "server_args": "nogui",
+            "level_seed": ""
+        }
+    }
+]
