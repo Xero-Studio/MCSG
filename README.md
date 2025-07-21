@@ -1,8 +1,9 @@
 English | [简体中文](README_ZH.md)
 
 
-# Important!
-This project has been deprecated due to the difficulty of PyQt, and it is now maintained by [TedZyzsdy](https://github.com/TedZyzsdt).
+# Important！
+NOW ME PLAN TO CREATE A NEW SERVER MANAGER,NOW PLEASE TO USE THE BAT FORMAT SERVER MANAGER.
+This project has been deprecated due to the difficulty of PyQt, and it is now maintained by [TedZyzsdy](https://github.com/TedZyzsdy).
 
 
 # MC Server Manager
