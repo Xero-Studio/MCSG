@@ -3,6 +3,7 @@ English | [简体中文](README_ZH.md)
 
 # Important！
 NOW ME MADE A NEW MINECRAFT SERVER START IN THE [repository](https://github.com/Xero-Studio/PythonMineCraftServerStart) BY [TedZyzsdy](https://github.com/TedZyzsdy).
+Moreover, give [the original repository](https://github.com/TedZyzsdy/PythonMineCraftServerStart/) by [TedZyzsdy](https://github.com/TedZyzsdy).
 This project has been deprecated due to the difficulty of PyQt, and it is now maintained by [TedZyzsdy](https://github.com/TedZyzsdy).
 
 
