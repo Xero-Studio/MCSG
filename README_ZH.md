@@ -1,5 +1,11 @@
 [English](README.md) | 简体中文
 
+
+# 重要！
+现在我建了一个新PMSS服务器启动器，在这个[仓库](https://github.com/Xero-Studio/PythonMineCraftServerStart),由[TedZyzsdy](https://github.com/TedZyzsdy) 编写
+因为PyQt太难了，此项目已停用，现由[TedZyzsdy](https://github.com/TedZyzsdt)维护
+
+
 # MC Server Manager
 
 基于 Python 和现代 GUI 的 Minecraft 服务器管理器！(原批处理版本已移至 `old/` 文件夹)
